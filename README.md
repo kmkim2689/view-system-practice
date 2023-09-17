@@ -121,7 +121,7 @@
       `binding = DataBindingUtil.setContentView(this, R.layout.activity_main)`
   
   * 이렇게 되면, DataBinding Object는 해당 xml(여기서는 activity_main)의 모든 View들에 대해 '속성'으로 참조 가능
-    * dot operator로 참조 가능 => `binding.ViewId`
+    * dot operator로 참조 가능 => `binding.viewId`
     * property name이 만들어지는 원리는 DataBinding Object의 이름의 원리와 동일하지만, 첫 글자는 소문자라는 차이점이 있음
     * 주의점 : xml 파일에서 id를 camal case로 정의한다면, DataBinding Object는 해당 뷰를 속성으로 받아들이지 못한다. 따라서 반드시 snake case로 지정
     
@@ -150,3 +150,129 @@
         }
     }
     ```
+  
+### 1.2. Databinding을 활용한 객체 바인딩
+* 많은 경우에 UI에 특정 정보를 띄우기 위하여 다음과 같은 방법을 사용
+  * 로컬 데이터베이스
+  * 원격 API
+
+* 이 두 경우의 공통점은, Object 형태로 데이터를 받는다는 것이다.
+* DataBinding을 활용한다면, 이렇게 받은 정보들을 직접적으로 레이아웃(xml)으로 전달시킬 수 있다.
+* 그렇게 함으로써 코드량을 줄일 수 있을 뿐만 아니라, 코드의 가독성도 높일 수 있다.
+
+* ObjectBindingActivity.kt
+  * 서버로부터 Student라는 객체 형태로 데이터를 GET 한다고 가정 => getStudent()
+  * 1.1.에서 알아보았던 대로라면, binding 객체에서 직접 view들을 참조하여 각 view들의 값을 설정해주는 작업을 수행해야 한다.
+  
+  ```
+  class ObjectBindingActivity : AppCompatActivity() {
+      private lateinit var binding: ActivityObjectBindingBinding
+      override fun onCreate(savedInstanceState: Bundle?) {
+          super.onCreate(savedInstanceState)
+          binding = DataBindingUtil.setContentView(this, R.layout.activity_object_binding)
+          
+          val student = getStudent()
+          
+          binding.apply { 
+              tvName.text = student.name
+              tvEmail.text = student.email
+          }
+      }
+  
+      private fun getStudent(): Student {
+          return Student(1, "Alex", "alex@gmail.com")
+      }
+  }
+
+  data class Student(
+      val id: Int,
+      val name: String,
+      val email: String
+  )
+  ```
+  
+  * 하지만, 가져온 객체의 property의 값을 하나하나 이용하여 binding 객체의 property에 일일이 값을 설정해주는 것은 매우 귀찮은 일
+  * DataBinding을 활용한다면, Student 객체를 직접적으로 xml에 바인딩할 수 있음 => viewBinding 대신 dataBinding을 활용하는 것의 가장 큰 강점
+  
+* Data class를 비롯한 객체를 직접 xml에 바인딩 하는 방법
+
+1. 레이아웃에서 특정 객체에 대한 참조를 추가
+* xml 파일에서 <layout> 태그 안에 <data> 태그를 추가
+  * 여기 안에서 레이아웃에서 사용할 객체들을 정의 => <variable>
+  * variable -> 특정 객체를 변수로 사용하기 위함
+    * name -> 변수명에 비유 가능
+    * type -> 자료형에 비유 가능
+      * package name을 포함한 경로
+  
+  ```
+  <data>
+        <variable
+            name="student"
+            type="com.practice.view_system_practice.Student" />
+  </data>
+  ```
+
+2. 이를 활용하여 Student의 property를 직접적으로 View에 넣을 값으로 할당 가능
+* name을 통하여 참조
+
+  ```
+  <layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+        <variable
+            name="student"
+            type="com.practice.view_system_practice.Student" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".ObjectBindingActivity">
+
+        <TextView
+            android:id="@+id/tv_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@{student.name}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tv_email"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@{student.email}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_name" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+  </layout>
+  ```
+  
+3. Activity 파일에서 DB/API로부터 받은 student 객체를 xml 레이아웃으로 보내기 위한 작업을 수행
+* BindingObject.xml에서 정의한 variable의 name 형태로
+  ```
+  class ObjectBindingActivity : AppCompatActivity() {
+      private lateinit var binding: ActivityObjectBindingBinding
+      override fun onCreate(savedInstanceState: Bundle?) {
+          super.onCreate(savedInstanceState)
+          binding = DataBindingUtil.setContentView(this, R.layout.activity_object_binding)
+          binding.student = getStudent()
+  
+      }
+  
+      private fun getStudent(): Student {
+          return Student(1, "Alex", "alex@gmail.com")
+      }
+  }
+  
+  data class Student(
+      val id: Int,
+      val name: String,
+      val email: String
+  )
+  ```
