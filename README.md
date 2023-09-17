@@ -517,3 +517,220 @@ class VmBasicActivity : AppCompatActivity() {
 * ViewModel이 더 이상 필요해지지 않는 시점에 호출된다.
   * 앱이 백그라운드 상태가 되고 시스템 메모리 관리 상의 이유로 앱 프로세스가 kill될 때
   * 또한 유저가 명백하게 액티비티 상에서 finish() 코드를 호출하거나 뒤로가기 버튼을 누를 때 때에도 onCleared()가 호출
+
+-- -- --
+## 3. LiveData
+
+### 3.1. LiveData의 용도
+
+* LiveData란?
+
+  * Lifecycle을 인식하는 Observable한 Data Holder 클래스
+  * 생명주기를 인식한다는 것이 특징 : 생명주기 동안에만 observer에게 변경되는 값을 알려줌
+    * 이것의 큰 장점으로 작용. 생명주기를 인식하기 때문에 RxJava와 같은 다른 반응형 프로그래밍을 위한 라이브러리를 사용할 때 activity/fragment/service의 observer를 별도로 처리 할 필요가 없어진다는 것
+  * 안드로이드에서 Lifecycle과 관련된 세 가지의 클래스들 => 아래의 클래스들은 LiveData Object에 대한 관찰자가 될 수 있음
+    * Activity
+    * Fragment
+    * Service
+
+* Activity/Fragment에서 ViewModel 상의 데이터를 관찰하기 위한 코드를 작성할 수 있는데, 바로 LiveData를 이용하는 것이다.
+
+* 만약 ViewModel 상의 데이터에 변화가 발생하였다면, LiveData를 활용하면 Activity나 Fragment의 UI를 자동으로 업데이트 할 수 있다.
+
+  * 수동으로 특정 view를 참고하여 직접 값을 설정할 필요가 없어짐 : up-to-date data 유지
+
+* 생명주기를 다루기 위한 코드들을 수동으로 작성할 필요가 없다.
+  * 관련된 생명주기를 가진 클래스가 destroy된다면, 스스로 clean up 작업을 수행
+  * 따라서, 메모리 누수 여부를 고려하지 않아도 됨
+  
+### 3.2. LiveData 사용하기
+
+1. ViewModel에서는 Activity/Fragment에서 관찰할 변수를 MutableLiveData와 LiveData로 정의한다.
+
+cf) LiveData vs MutableLiveData
+* LiveData 객체 내부에 있는 데이터는 읽기만 가능하며, 수정이 불가능하다.
+* MutableLiveData는 LiveData의 하위 클래스로, 데이터를 바꾸는 것이 가능하다.
+
+2. MutableLiveData에 값을 할당해준다.
+
+* 방법
+  * mutableLiveData명.value = 값
+
+* 그 결과, viewModel에서는 더 이상 데이터를 얻어오기 위한 함수가 필요 없어진다.
+
+```
+class VmAccViewModel(startingTotal: Int): ViewModel() {
+    private var _count = MutableLiveData<Int>()
+    val count = _count.value
+
+    init {
+        _count.value = startingTotal
+    }
+
+/*    fun getCountData(): Int {
+        return count
+    }*/
+
+    fun updatedData(num: Int) {
+        _count.value = _count.value?.plus(num)
+    }
+}
+```
+
+3. 해당 LiveData를 사용할 Activity/Fragment/Service에서, LiveData를 observe 하기 위한 코드를 작성한다.
+
+```
+viewModel.count.observe(this, Observer { 
+    binding.tvCount.text = it.toString()
+})
+```
+여기서...
+* 첫 번째 parameter : lifecycleOwner -> 액티비티에 대한 라이프사이클을 감지해야 하므로 액티비티 context를 집어넣음
+* 두 번째 parameter : Observer 클래스 정의 -> 값이 바뀌는 것을 관찰한 순간 해야 할 일을 onChanged block 안에 정의
+
+
+### 3.3. viewModel을 xml layout에 직접 연결하기
+
+* 버튼을 클릭하였을 때의 동작을 Activity 코드에서 정의할 필요가 없고, xml에서 정의
+
+  * Activity에서 button에 대한 onClickListener를 설정할 필요가 없다.
+  * databinding을 활용하면 된다.
+
+1. activity layout에서 viewModel을 활용하기 위하여 data를 정의
+```
+    <data>
+        <variable
+            name="viewModel"
+            type="com.practice.view_system_practice.VmAccViewModel" />
+    </data>
+```
+
+2. activity에서 xml에서 사용할 viewModel을 할당해주기
+```
+binding.viewModel = viewModel
+```
+
+3. layout xml 파일에서 특정 뷰(여기서는 버튼)에 대한 onClick 속성을 정의한다.
+
+  * 방법
+
+    * Button에 onClick 속성을 추가한다.
+    * @와 {}를 활용
+    * {} 안에는 익명의 함수를 arrow function으로 정의한다.
+    ```
+    <Button
+            android:id="@+id/btn_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintStart_toStartOf="@id/tv_count"
+            app:layout_constraintTop_toBottomOf="@id/tv_count"
+            android:onClick="@{() -> viewModel.updatedData()}"/>
+    ```
+    
+* 이렇게 함으로써, 최종 코드는 다음과 같이 button에 대한 onClickListener를 제거할 수 있다.
+```
+class VmAccActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityVmAccBinding
+    private lateinit var viewModel: VmAccViewModel
+    private lateinit var viewModelFactory: VmAccViewModelFactory
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_vm_acc)
+
+        viewModelFactory = VmAccViewModelFactory(15)
+        viewModel = ViewModelProvider(this, viewModelFactory).get(VmAccViewModel::class.java)
+        binding.viewModel = viewModel
+
+        // live data
+        viewModel.count.observe(this) {
+            binding.tvCount.text = it.toString()
+        }
+    }
+}
+```
+    
+* 주의 : 이것을 사용하기 위해서는 gradle 버전이 2.0 이상이어야 한다.
+
+### 3.4. LiveData Object를 layout xml에 직접 연결하기
+
+* 이것을 활용하면, activity 단에서 특정 LiveData를 Observe할 필요가 없어진다.
+* xml에서 viewModel의 LiveData를 직접 읽어오는 작업을 진행하면 된다.
+* 만약 자료형을 바꾸고 싶다면, 바꾸고 싶은 자료형.valueOf(이전 자료형)을 넣으면 된다.
+
+```
+<TextView
+    android:id="@+id/tv_count"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="36dp"
+    android:layout_marginTop="200dp"
+    android:text="@{String.valueOf(viewModel.count)}"
+    android:textSize="52sp"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/et_count" />
+```
+
+* 이 작업은 viewModel의 livedata를 직접 사용한 것으로, activity 코드에서 진행하였던 observe() 함수를 사용하는 과정이 포함되어 있지 않는다.
+  * 즉, lifecycle owner를 지정해줌으로써 livedata가 lifecycle을 인식할 수 있도록 하는 과정이 생략되어있음.
+  * LiveData는 항상 생명주기와 관련되어있기 때문에, viewModel object에 대한 lifecycle owner를 설정해주는 것이 반드시 필요
+
+```
+class VmAccActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityVmAccBinding
+    private lateinit var viewModel: VmAccViewModel
+    private lateinit var viewModelFactory: VmAccViewModelFactory
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_vm_acc)
+        // viewmodel 생성자가 없는 경우
+        // viewModel = ViewModelProvider(this).get(VmAccViewModel::class.java)
+
+        // viewmodel 생성자가 있는 경우
+        viewModelFactory = VmAccViewModelFactory(15)
+        viewModel = ViewModelProvider(this, viewModelFactory).get(VmAccViewModel::class.java)
+        binding.viewModel = viewModel
+        // *** viewmodel에서 사용할 livedata들이 생명주기를 인식할 수 있도록 하는 작업
+        binding.lifecycleOwner = this
+    }
+}
+```
+
+### 3.5. 양방향 DataBinding
+
+* 지금까지의 내용을 바탕으로, LiveData를 활용하면 실시간으로 변경되는 값을 자동적으로 UI에 값을 변경할 수 있음을 알게 되었다.
+
+* 양방향 DataBinding?
+
+  * 앞에서는 Object의 값이 변경될 때 UI의 값이 변경되는 것을 다루었음(단방향 데이터 바인딩)
+  * 양방향 DataBinding은 여기에 더하여 UI의 값이 변경될 때, 연관된 Object의 값을 변경하기 위해 사용
+  
+* 양방향 데이터 바인딩을 구현하기 위하여, EditText를 하나 구현
+
+  * 주의 : viewModel에서 livedata를 정의할 때 MutableLiveData로 정의해야 하며, 해당 MutableLiveData 변수가 private이 되어서는 안된다.
+  `val userName = MutableLiveData<String>()`
+
+  * EditText의 값에 따라 자동적으로 viewModel의 LiveData값이 변경되도록 하는 방법
+  ```
+  <EditText
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:textSize="36sp"
+      app:layout_constraintBottom_toTopOf="@id/tv_count"
+      android:text="@{viewModel.userName}" />
+  ```
+  
+  * 이러한 방식으로 단방향 데이터 바인딩과 같은 방법을 사용하면, edittext의 변화가 livedata에 반영되지 않는다.
+
+  * 입력 사항을 livedata에 반영한다는 의미에서, **@={}** 사인을 사용한다.
+
+  ```
+  <EditText
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textSize="36sp"
+    app:layout_constraintBottom_toTopOf="@id/tv_count"
+    android:text="@{viewModel.userName}" />
+  ```
+  
+
+

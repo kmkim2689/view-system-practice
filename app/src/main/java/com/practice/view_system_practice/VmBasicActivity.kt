@@ -24,10 +24,13 @@ class VmBasicActivity : AppCompatActivity() {
             }
         }*/
 
+        viewModel.count.observe(this) {
+            binding.tvCount.text = it.toString()
+        }
+
         binding.apply {
-            tvCount.text = viewModel.getCurrentCount().toString()
             btnCount.setOnClickListener {
-                tvCount.text = viewModel.getUpdatedCount().toString()
+                viewModel.updatedCount()
             }
         }
 
