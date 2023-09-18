@@ -764,6 +764,100 @@ class VmAccActivity : AppCompatActivity() {
   * onCreate()에서는 Fragment가 생성되는 때이지, Fragment에 속해있는 View들이 생성되는 때가 아니기 때문
   * Fragment와 Fragment의 View들의 lifecycle은 별도임을 유의
 
-## 5. navigation
+## 5. Navigation
 
+### 5.1. Jetpack Navigation
 
+* jetpack navigation architecture components library
+  * 앱에서 다뤄야 할 navigation을 위해 필요한 모든 것들을 다룰 수 잇는 도구들이 마련되어 있어 종전의 방식보다 쉽게 navigation 구현 가능
+
+* 최근의 안드로이드 앱개발의 트렌드 : **Single Activity, Multiple Fragments**
+  * Navigation Architecture Component를 사용함으로써, 하나의 빈 Activity를 Basement로 사용
+  * 다른 화면들은 모두 Fragment로 구현
+
+* Navigation 3대 구성요소
+  * NavigationGraph
+    * navigation과 관련된 모든 정보들을 담고 있는 xml 파일
+    * Navigation Graph를 활용하여, 한 xml 파일에서 navigation 관련 task들을 관리 가능
+  * NavHost(Fragments)
+    * Navigation Graph를 가지고 있는 Container로, Activity에서 관리.
+    * 일종의 비어있는 Container 역할
+    * Container 내부에 Navigation Graph 경로의 설정에 따라 Fragment를 갈아끼우거나 추가하거나 제거하는 식으로 화면을 전환
+  * NavController
+    * Navigation Graph에 추가한 destination들 간 navigation을 관리하기 위한 클래스
+    * navigate() 등의 함수를 활용하여 화면 이동을 지시
+
+### 5.2. Navigation Component 사용하기
+
+1. dependency로 다음과 같이 추가
+
+```
+  def nav_version = "2.5.3"
+
+  // Kotlin
+  implementation "androidx.navigation:navigation-fragment-ktx:$nav_version"
+  implementation "androidx.navigation:navigation-ui-ktx:$nav_version"
+```
+
+2. Fragment 간 Data를 주고받고자 할 때, safe args를 사용해야 함. 따라서 아래의 dependency도 추가
+
+* project 수준 build.gradle
+```
+buildscript {
+    ext {
+        nav_version = '2.5.3'
+    }
+    dependencies {
+        classpath "androidx.navigation:navigation-safe-args-gradle-plugin:$nav_version"
+    }
+}
+```
+
+* module 수준
+```
+plugins {
+    id 'androidx.navigation.safeargs.kotlin'
+}
+```
+
+3. Navigation Graph 생성
+
+* Navigation Graph는 애플리케이션에서 표출해야 할 모든 화면들(Fragment)을 표출하며
+* 어떻게 유저가 각 스크린에 도달하는지에 대한 정보를 담고 있음
+* 한 파일을 활용하여 navigation 관련 action들을 관리할 수 있도록 한다.
+
+* Navigation Editor에서 생성 가능(xml 코드로도 확인 가능하며, 시각적으로도 확인 가능)
+  * Android Studio 좌측의 Resource Manager > Navigation 탭 > 좌측 상단의 + 버튼
+  * Android Studio가 res 폴더 내부에 navigation 폴더를 생성하여 그 안에 navigation graph xml 파일을 생성한다.
+  * 파일명은 nav_graph로 한다.
+
+4. Navigation Host Fragment 생성
+
+> navigation graph를 생성하고, 디자인 모드에서 좌측 상단의 Host 탭을 보면 다음과 같은 문구를 확인 가능
+> "No NavHostFragments Found"
+
+* Navigation Graph를 Host하고 화면들을 담기 위한 Fragment
+* Navigation Graph만을 생성해서 화면들의 이동을 구현할 수는 없다. 어떻게 이동할 지만 정해놓았기 때문.
+  * Navigation Graph는 Host Fragment를 통해 다른 스크린과 상호작용
+* 이동할 화면들을 Host, 즉 Container 역할을 할 Fragment가 별도로 필요한데 이것이 바로 Navigation Host Fragment
+  * Host Fragment의 고정된 크기 안에서 여러 화면들을 전환
+
+* Basement로 삼을 Activity xml 파일로 이동하여, NavHostFragment를 추가한다.
+  * FragmentContainerView 태그를 활용
+  * activity 내부에 fragment를 생성하고, 그 fragment를 navGraph와 연결(navGraph 속성 활용)
+  ```
+  <androidx.fragment.app.FragmentContainerView
+       android:id="@+id/nav_host_fragment"
+       android:name="androidx.navigation.fragment.NavHostFragment"
+       android:layout_width="match_parent"
+       android:layout_height="match_parent"
+       app:defaultNavHost="true"
+       app:navGraph="@navigation/nav_graph" />
+  ```
+  * 그 결과, nav_graph.xml로 이동하면 Host로 activity가 추가된 것을 확인 가능
+
+5. Nav Graph에 화면(Fragment)들을 추가
+
+* 좌측 상단의 + 버튼 > fragment 추가
+* 첫 번째 화면을 추가하면, graph에 화면이 나타나고 fragment명 좌측에는 홈 모양의 아이콘이 함께 나타남
+  * start destination이라는 의미로, 이는 쉽게 바꿀 수 있음
