@@ -734,6 +734,36 @@ class VmAccActivity : AppCompatActivity() {
   
 ## 4. Lifecycle
 
+### 4.1. Activity Lifecycle Transition Example
 
+* 어떤 Activity를 띄울 때(메모리에 올라갈 때),
+  * onCreate -> onStart -> onResume 순으로 빠르게 호출
+  * 액티비티가 Foreground에서 아무런 제약없이 화면이 보이고 동작하는 동안은 Activity Running 상태
+  * 그러다가, 다른 Activity가 띄워지게 되면, 이전 Activity는 일부분 이상이(여기서는 전체) 시야에서 사라지게 되므로 onPause가 호출
+  * 그 후 다른 Activity의 onCreate -> onStart -> onResume 순으로 호출되고 나서야 완전히 이전 액티비티는 Foreground에서 사라진 것을 확신할 수 있어 이 시점에서 onDestroy가 호출
+    * **onStop() 상태에서는 UI가 보이지 않을 뿐, 여전히 액티비티는 메모리에 남아있다는 것에 주의해야 한다.**
+    
+  * 액티비티에서 onDestroy()가 호출되는 경우
+    * 뒤로가기 버튼을 누르거나
+    * finish()를 호출하거나
+    * Configuration Change가 발생하였을 경우
+      * 특히, Configuration Change가 발생하는 경우, onDestroy()까지 호출된 후 다시 onCreate()부터 호출된다.
+    
+  * 따라서, 새로 호출한 Activity에서 뒤로가기 버튼을 누르는 경우, 두 번째로 호출한 Activity는 onPause() 상태로 전이 되었다가,
+    * 이전 Activity가 onStop() 상태에서 다시 호출되었으므로 onRestart -> onStart -> onResume으로 다시 Running 상태로 들어가고,
+    * 그때 이후에 두번째로 호출한 Activity는 onStop -> onDestroy까지 호출됨으로써 메모리로부터 해제된다.
+
+### 4.2. Fragment Lifecycle
+
+* fragment : 액티비티(UI)에서 일부분 재사용될 수 있는 장소 => sub activity component
+* 액티비티에서처럼, 별도의 레이아웃과 생명주기를 가지며 사용자와 상호작용도 가능
+  * 하지만, Fragment는 독립적으로 존재할 수 없다는 점이 가장 큰 특징
+  * 반드시 Host Activity 혹은 다른 Fragment에 속해 있어야 한다.
+
+* Fragment의 lifecycle 중, onCreateView에서 ui 관련 객체들을 초기화하는 작업들(binding, viewmodel)과 클릭 이벤트 등을 정의한다.
+  * onCreate()에서는 Fragment가 생성되는 때이지, Fragment에 속해있는 View들이 생성되는 때가 아니기 때문
+  * Fragment와 Fragment의 View들의 lifecycle은 별도임을 유의
+
+## 5. navigation
 
 
