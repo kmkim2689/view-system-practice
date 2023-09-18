@@ -732,5 +732,8 @@ class VmAccActivity : AppCompatActivity() {
     android:text="@{viewModel.userName}" />
   ```
   
+## 4. Lifecycle
+
+
 
 
