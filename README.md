@@ -860,4 +860,181 @@ plugins {
 
 * 좌측 상단의 + 버튼 > fragment 추가
 * 첫 번째 화면을 추가하면, graph에 화면이 나타나고 fragment명 좌측에는 홈 모양의 아이콘이 함께 나타남
-  * start destination이라는 의미로, 이는 쉽게 바꿀 수 있음
+  * start destination이라는 의미로, 이는 쉽게 바꿀 수 있음(위의 홈 모양 버튼을 통해)
+  * 첫번째 Fragment인 HomeFragment에 EditText와 Button을 넣고, Databinding을 위하여 다음과 같이 설정
+    * fragment_home.xml
+    ```
+    <?xml version="1.0" encoding="utf-8"?>
+    <layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"        
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <data>
+    
+        </data>
+        <androidx.constraintlayout.widget.ConstraintLayout 
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:context=".navigation.HomeFragment">
+    
+            <EditText
+                android:id="@+id/et_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintBottom_toTopOf="@id/btn_submit"
+                android:layout_marginHorizontal="36dp"
+                android:textSize="36sp" />
+    
+            <Button
+                android:id="@+id/btn_submit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/et_text"
+                app:layout_constraintBottom_toBottomOf="parent"
+                android:text="@string/submit"/>
+    
+    
+    
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </layout>
+    ```
+    
+    * HomeFragment.kt
+    ```
+    class HomeFragment : Fragment() {
+        private lateinit var binding: FragmentHomeBinding
+            override fun onCreateView(
+                inflater: LayoutInflater, 
+                container: ViewGroup?,savedInstanceState: Bundle?
+            ): View? {
+                binding = DataBindingUtil.inflate(inflater, R.layout.fragment_home, container, false)
+                return binding.root
+            } 
+    }
+    ```
+    
+  * 같은 방식으로, 다른 fragment들도 만든다.
+
+6. Fragment 간 이동을 구현한다.
+
+* Fragment간 이동은 <action>으로 구현한다!
+
+* navigation graph xml 파일을 text mode로 전환 시,
+  * **<navigation>** 태그가 가장 상위에 존재
+    * 여기서 startDestination이 정의됨을 알 수 있음
+      * 하위 <fragment>의 id로 정의
+  * **<navigation>** 태그 내부에는, **<fragment>** 태그들이 존재
+    * base activity xml 파일에서 정의한 <FragmentContainerView> 내부에 나타날 수 있는 화면들을 정의한 것
+    
+* 하지만, 내부에 **<fragment>**만 정의한다고 해서, 화면 간 이동을 구현할 수는 없다.
+  * 화면에서 다른 화면으로 이동시키는 것은 <action>으로 정의한다.
+
+* 방법
+
+  * design 모드로 이동하여,
+    * 시작 fragment의 오른쪽 circle을 끌어당겨 도착 fragment에 놓는다.
+    * 이렇게 하면, 시작 화면에서 도착 화면으로 이동이 가능함을 정의한 것이다.
+    * 그 결과로, text 모드로 보면 action이 생성되었고, 그에 대한 action id 역시 생성됨을 알 수 있다.
+      * "시작" fragment 태그 하위에 action 태그가 발생하고 속성으로 id와 destination(도착 fragment id)이 지정됨을 알 수 있다.
+    
+  * Fragment Class 파일에서 Fragment의 이벤트와 만들어 놓은 action을 연결함으로써 화면 이동을 구현한다.
+    * view를 통하여 navController 객체를 가져와, navController 객체의 navigate(action id) 함수를 활용하여 화면 이동을 구현한다.
+  
+  ```
+  binding.btnSubmit.setOnClickListener { 
+      // nav graph에서 정의한 action을 연결하기 위하여, navController 객체를 이용해야 한다.
+      // 매개변수인 view(it)를 통해 navController를 찾아올 수 있음
+      // navController의 navigate()함수를 통하여 화면 이동을 구현
+      // findNavController() 메소드는 fragment가 navHostFragment 내부에 있을 때에만 호출되어야 하며, 만약 그렇지 않는다면 예외 발생 - IllegalStateException
+      // 앞의 과정에서 activity에 <FragmentContainerView> 태그를 통하여 navHostFragment를 정의
+      // 거기에 navGraph 속성을 통해 navGraph를 연결. 그 안에 fragment들이 소속되어 있으므로 호출 가능 조건 만족
+      it.findNavController().navigate(R.id.action_homeFragment_to_secondFragment)
+  }
+  ```
+  
+  * 그 결과, 화면 이동이 잘 이뤄짐.
+
+7. 화면 이동 시 넘겨줄 데이터를 정의한다.
+
+* 방법 1. navigate() 함수의 두 번째 매개변수인 args를 활용하여 bundle 형태로 도착 fragment에 데이터 전달하기
+
+  * 하지만, 이것은 권장되지 않는 방법이다.
+
+  * 시작 fragment에서 데이터 번들로 만들어 전달하기
+
+  ```
+  class HomeFragment : Fragment() {
+      private lateinit var binding: FragmentHomeBinding
+      override fun onCreateView(
+          inflater: LayoutInflater, container: ViewGroup?,
+          savedInstanceState: Bundle?
+      ): View? {
+          binding = DataBindingUtil.inflate(inflater, R.layout.fragment_home, container, false)
+          binding.btnSubmit.setOnClickListener { 
+              
+              // null safety를 위하여 edittext에 text 존재 여부 검사
+              if (!TextUtils.isEmpty(binding.etText.text.toString())) {
+                  // 다른 화면으로 넘겨줄 데이터
+                  // edittext의 content를 보내고자 함 -> bundle 형태로 만드는 것이 포인트
+                  // 하지만, 권장되지 않는 방법임.
+                  // viewModel을 사용하는 것이 best practice. 클릭 시 뷰모델에 데이터를 저장하고, 도착 fragment에서 viewmodel의 데이터를 사용
+                  val bundle = bundleOf(
+                      "user_input" to binding.etText.text.toString()
+                  )
+  
+                  // nav graph에서 정의한 action을 연결하기 위하여, navController 객체를 이용해야 한다.
+                  // 매개변수인 view(it)를 통해 navController를 찾아올 수 있음
+                  // navController의 navigate()함수를 통하여 화면 이동을 구현
+  
+                  // 데이터를 넘겨주고자 한다면, navigate()의 두 번째 인자로 bundle을 넣는다.
+                  // 권장되지 않는 방법
+                  it.findNavController().navigate(R.id.action_homeFragment_to_secondFragment, bundle)
+                  // it.findNavController().navigate(R.id.action_homeFragment_to_secondFragment)
+              } else {
+                  Toast.makeText(requireActivity(), "please insert text", LENGTH_SHORT).apply { 
+                      show()
+                  }
+              }
+          }
+          return binding.root
+      }
+  
+  }
+  ```
+  
+  * 도착 fragment에서 전달받은 데이터 활용하기
+
+  ```
+  class SecondFragment : Fragment() {
+      private lateinit var binding: FragmentSecondBinding
+      override fun onCreateView(
+          inflater: LayoutInflater, container: ViewGroup?,
+          savedInstanceState: Bundle?
+      ): View? {
+          binding = DataBindingUtil.inflate(inflater, R.layout.fragment_second, container, false)
+          // Inflate the layout for this fragment
+          
+          var input = requireArguments().getString("user_input")
+          binding.tvResult.text = input.toString()
+          
+          return binding.root
+      }
+  }
+  ```
+
+* 방법 2. viewModel을 활용하기(권장)
+
+8. Fragment 이동에 대한 animation 구현하기
+
+* navigation graph xml 파일에서, 화면의 이동을 나타내는 화살표(action)를 클릭하면,
+* design mode의 우측의 설정 탭에서 Animation 관련하여 네 가지 속성을 설정할 수 있음을 알 수 있다.
+  * enter : 한 화면에서 다른 화면을 append 하는 방식으로 이동하는 경우, 다음 화면이 나타나는 애니메이션을 정의 
+  * exit : 한 화면에서 다른 화면을 append 하는 방식으로 이동하는 경우, 이전 화면이 사라지는 애니메이션을 정의
+  * popEnter : 한 화면을 종료(pop)하는 방식으로 다른 화면으로 이동하는 경우, 이전 화면이 나타나는 애니메이션을 정의
+  * popExit : 한 화면을 종료(pop)하는 방식으로 다른 화면으로 이동하는 경우, 현재 화면이 사라지는 애니메이션을 정의
+* xml 형태로 만들어진 animation xml 파일명을 활용하여 설정
+

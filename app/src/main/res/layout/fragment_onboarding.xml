@@ -5,33 +5,31 @@
     <data>
 
     </data>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".navigation.HomeFragment">
+        tools:context=".navigation_mission.OnboardingFragment">
 
-        <EditText
-            android:id="@+id/et_text"
-            android:layout_width="match_parent"
+        <Button
+            android:id="@+id/btn_sign_up"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="sign up"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/btn_submit"
-            android:layout_marginHorizontal="36dp"
-            android:textSize="36sp" />
+            app:layout_constraintBottom_toTopOf="@id/btn_terms" />
 
         <Button
-            android:id="@+id/btn_submit"
+            android:id="@+id/btn_terms"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="terms"
+            app:layout_constraintTop_toBottomOf="@id/btn_sign_up"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/et_text"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:text="@string/submit"/>
-
-
+            app:layout_constraintBottom_toBottomOf="parent"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
