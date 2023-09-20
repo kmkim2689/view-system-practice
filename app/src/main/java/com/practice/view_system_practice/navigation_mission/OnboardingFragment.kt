@@ -18,11 +18,13 @@ class OnboardingFragment : Fragment() {
     ): View? {
         binding = DataBindingUtil.inflate(inflater, R.layout.fragment_onboarding, container, false)
 
+        binding.btnSignUp.setOnClickListener {
+            it.findNavController().navigate(R.id.action_onboardingFragment_to_nameFragment)
+        }
+
         binding.btnTerms.setOnClickListener {
             it.findNavController().navigate(R.id.action_onboardingFragment_to_termsFragment)
         }
-
         return binding.root
     }
-
 }
