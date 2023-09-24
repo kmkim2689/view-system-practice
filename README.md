@@ -1127,5 +1127,137 @@ plugins {
 
 
 -- -- --
-### 6. Coroutines
+## 6. Coroutines
 
+### 6.1. About Coroutines
+
+* Cooperative Multitasking
+
+  * Thread가 스스로 그들의 행동을 제어
+
+* Coroutine이란?
+
+  * 소프트웨어 구성요소로서, Cooperative Multitasking을 위하여 만들어지는 하위 routines
+
+* 역사
+
+  * 1958년 어셈블리어에서 처음으로 활용
+  * Python, C#, JS 등에서 사용
+
+* Kotlin의 Coroutines
+
+  * sequence of well managed **sub tasks** : 하위의 여러 태스크들의 일치(동시다발적 실행)
+  * Coroutine은 경량 Thread로 간주되기도 함(단, Coroutine이 Thread라는 것을 의미하는 것은 아님)
+  * 하나의 Thread 내부에 수많은 Coroutine 실행 가능
+  * Coroutine은 여러 Thread를 오가며 작업할 수 있음
+  * 특정 Coroutine은 한 Thread에서 동작 중지된 상태에서, 다른 Thread에서 resume될 수 있다.
+
+* 왜 안드로이드 개발에 Coroutine이 필요한가?
+
+  * 최근 안드로이드 디바이스에서는 1초 동안 60Hz / 최대 120Hz의 refresh 주파수를 가지고 있다.
+    * https://source.android.com/docs/core/graphics/multiple-refresh-rate?hl=ko
+    * 즉, 1초에 특정 Hz만큼의 횟수로 앱의 refresh가 진행된다는 것이다.
+    * 그렇다면, 한 번 refresh가 진행되는 데에는 
+      * 60Hz의 경우 약 17ms동안 1번의 refresh가 진행
+      * **즉, Main Thread에서 1번 refresh를 진행하는데 17ms를 사용하게 됨**
+      * 하지만, 최근 스마트폰에서는 Hz가 커짐에 따라 refresh 횟수가 많아져, refresh에 주어지는 시간이 점점 짧아지고 있다.
+        * 120Hz의 경우 약 8ms동안 1번의 refresh
+
+  * 매 refresh마다, 안드로이드의 Main Thread에는 주기적으로 해야 할 일들(책임)이 부여됨
+
+    * parsing XML
+    * inflating view components
+    * drawing the screen
+    * listening to users -> 유저의 동작 처리(클릭 이벤트 등)
+    
+  * 이렇게 할 일이 많은 만큼, 만약 Main Thread에 많은 task를 부여한다면
+    * refresh 간 시간(위의 예시대로 라면 16ms)이 부족하게 될 수 있음(refresh 시 부여된 수많은 작업들을 하느라 refresh 간 시간을 초과)
+    * 이것이 누적된다면, 성능 상의 문제가 발생하며, 스크린이 멈춘다.
+    * 이 현상으로 인하여 최악의 경우 ANR 발생 가능
+    * 최근 안드로이드 디바이스의 refresh 횟수가 계속 커짐에 따라 이러한 오류의 가능성도 높아짐
+
+  * 따라서, 오랜 시간이 걸리는 작업의 경우 비동기적으로, 다른 Thread에서 실행시켜야 한다.
+    * 이것을 달성할 수 있는 가장 효율적인 기술이 Coroutines
+
+
+### 6.2. Coroutines Tutorial
+
+* Coroutine을 사용하지 않는다면?
+
+  * 아래의 예시로 시간이 오래 걸리는 작업을 Main Thread에서 수행하고 있는 동안, 다른 UI 관련 작업을 수행했을 때의 양상을 확인할 수 있음
+  * 먼저 다운로드 버튼을 누르고, count 버튼을 수 차례 눌렀을 때 어떠한 일이 발생하는가?
+    * count 버튼을 누를 때마다 즉각 count가 증가하지 못하며 시간이 지나고 나서야 가장 마지막 count 값으로 업데이트 됨을 알 수 있음
+    * 이러한 UI 이슈는 Main Thread에서 시간이 오래 걸리는 task를 수행한 탓
+
+```
+class CoroutineActivity : AppCompatActivity() {
+    private var count = 0
+    private lateinit var binding: ActivityCoroutineBinding
+    companion object {
+        const val TAG = "CoroutineActivity"
+    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_coroutine)
+        
+        // initial project : 모든 작업을 main thread에서 실행
+        binding.btnCount.setOnClickListener { 
+            binding.tvCount.text = count++.toString()
+        }
+        
+        binding.btnDownload.setOnClickListener {
+            // long runnign task    
+            downloadUserData()
+        }
+        
+    }
+
+    // 시간이 오래 걸리는 작업
+    private fun downloadUserData() {
+        for (i in 1..200_000) {
+            Log.i(TAG, "downloading $i in ${Thread.currentThread().name}")
+        }
+    }
+}
+```
+
+* 이를 방지하기 위하여, 다른 Thread에서 long running task를 수행시키고자 coroutine을 활용
+
+  * 특정 Thread에서 같은 시간 동안 여러 개의 Coroutine이 실행될 수 있음.
+  * Coroutine은 Thread가 아니라, Thread의 위에서 동작하는 별도의 프로세서라고 간주하는 것이 좋음
+  * 앞의 예시에서 발생한 문제가 해결되었음을 알 수 있다.
+
+```
+class CoroutineActivity : AppCompatActivity() {
+    private var count = 0
+    private lateinit var binding: ActivityCoroutineBinding
+    companion object {
+        const val TAG = "CoroutineActivity"
+    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_coroutine)
+        
+        binding.btnCount.setOnClickListener { 
+            binding.tvCount.text = count++.toString()
+        }
+        
+        // coroutine 사용
+        binding.btnDownload.setOnClickListener {
+            // run on background thread
+            CoroutineScope(Dispatchers.IO).launch {
+                // long runnign task    
+                downloadUserData()
+            }
+        }
+        
+    }
+
+    // 시간이 오래 걸리는 작업
+    private fun downloadUserData() {
+        for (i in 1..200_000) {
+            Log.i(TAG, "downloading $i in ${Thread.currentThread().name}")
+        }
+    }
+}
+```
