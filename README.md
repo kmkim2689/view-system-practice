@@ -1261,3 +1261,17 @@ class CoroutineActivity : AppCompatActivity() {
     }
 }
 ```
+
+### 6.3. Coroutine Scopes, Dispatchers, and Builders
+
+> 한 앱에서, 수많은 코루틴들을 실행시킬 수 있음. 동시에 100개 이상의 코루틴을 실행시킬 수 있다. 다만, Coroutine의 동작을 개발자는 추적할 수 없음. 또한, 코루틴에서 이뤄지는 작업들의 상황에 대해서도 알 수 없다. 따라서, Coroutine을 제대로 다루지 못한다면, Coroutine이 메모리 누수를 발생시킬 수 있다. 하지만, Kotlin 차원에서 해당 문제가 발생하지 않도록 조치함
+* Memory Leak : 자원들이 불필요하게 낭비되고 앱의 성능에 악영향을 끼치는 것
+
+* Kotlin Coroutine에서는, Coroutine을 시작시키는 작업은 방드시 Scope 내부에서 이뤄져야 한다.
+  * Scope에서 정의되어 있는 속성/함수들을 활용함으로써, coroutine을 추적할 수 있고, 취소할 수 있으며, 코루틴이 던진 에러와 예외를 다룰 수 있다.
+
+* 즉, **(Coroutine)Scope => Interface**
+  * 코루틴에 scope을 제공하기 위한 인터페이스
+  * CoroutineScope 외에도, GlobalScope라는 것도 존재
+    * GlobalScope : 최상위 레벨의 코루틴 scope으로, 애플리케이션 생명주기 단위로 실행 -> 거의 사용하지 않음
+  * Scope는 coroutine context를 참조하기 위해 사용된다는 점도 기억할 것
