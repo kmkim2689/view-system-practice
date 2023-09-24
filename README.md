@@ -307,6 +307,8 @@
   )
   ```
   
+-- -- --
+
 ## 2. ViewModel
 
 ### 2.1. ViewModel을 왜 사용해야 하는가?
@@ -732,6 +734,8 @@ class VmAccActivity : AppCompatActivity() {
     android:text="@{viewModel.userName}" />
   ```
   
+-- -- --
+
 ## 4. Lifecycle
 
 ### 4.1. Activity Lifecycle Transition Example
@@ -763,6 +767,8 @@ class VmAccActivity : AppCompatActivity() {
 * Fragment의 lifecycle 중, onCreateView에서 ui 관련 객체들을 초기화하는 작업들(binding, viewmodel)과 클릭 이벤트 등을 정의한다.
   * onCreate()에서는 Fragment가 생성되는 때이지, Fragment에 속해있는 View들이 생성되는 때가 아니기 때문
   * Fragment와 Fragment의 View들의 lifecycle은 별도임을 유의
+
+-- -- --
 
 ## 5. Navigation
 
@@ -1054,7 +1060,6 @@ plugins {
 
   * 메모리 효율이 더 좋고, 더 진보된 방식으로 데이터의 리스트를 보여줄 수 있음
 
----
 
 ### 5.2. RecyclerView를 활용하는 방법
 
@@ -1110,9 +1115,8 @@ plugins {
 
 9. 4.에서 adapter를 설정한다.
 
----
 
-### 5.3. Adapter에서 list item에 대한 변경을 가하고자 할 때 방법들
+### 5.3. Adapter에서 list item을 사용하여 작업을 수행하는 방법
 
 * 방법 1. ViewHolder 클래스 내부에 정의한 bind() 함수에서 정의
   * 장점 : 손쉽게 설정 가능
@@ -1120,3 +1124,8 @@ plugins {
 
 * 방법 2 : 고차함수를 활용하여 controller view에서 클릭 시의 이벤트를 정의하여 adapter로 넘겨주는 방법
   * view controller로 선택된 아이템(객체)를 넘겨주어야 할 때 유용하다.
+
+
+-- -- --
+### 6. Coroutines
+
