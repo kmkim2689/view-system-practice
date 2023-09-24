@@ -1038,3 +1038,85 @@ plugins {
   * popExit : 한 화면을 종료(pop)하는 방식으로 다른 화면으로 이동하는 경우, 현재 화면이 사라지는 애니메이션을 정의
 * xml 형태로 만들어진 animation xml 파일명을 활용하여 설정
 
+-- -- --
+## 5. RecyclerView
+
+### 5.1. RecyclerView의 사용 목적
+* Android 개발을 위해, 이전에는 ListView와 GridView를 활용하여 데이터의 리스트를 화면에 보여주었음
+
+* 하지만, 여기에는 몇몇 문제점들이 존재
+
+  * 가장 큰 문제점 : 메모리 비효율성
+  
+    * 그 이외의 문제점들 : 복잡하고 에러가 발생하기 쉬운 코드를 작성
+
+* 이를 해결하기 위하여 나온 대안이 RecyclerView
+
+  * 메모리 효율이 더 좋고, 더 진보된 방식으로 데이터의 리스트를 보여줄 수 있음
+
+---
+
+### 5.2. RecyclerView를 활용하는 방법
+
+1. Activity 혹은 Fragment 클래스 파일과 그에 상응하는 Layout xml 파일을 만든다.
+
+2. xml 파일에 <RecyclerView>를 추가한다.
+
+   * 아이디를 추가하여, 클래스에서 사용할 수 있도록 한다.
+   
+3. Activity/Fragment 파일로 이동하여, RecyclerView를 초기화한다.
+
+4. 초기화한 RecyclerView를 통하여 rv의 layoutManager와 adapter를 설정한다.
+
+   * 가능한 세 가지 layoutManager
+   
+     * LinearLayoutManager
+     * GridLayoutManager
+     * StaggeredGridLayoutManager : https://abhiandroid.com/materialdesign/recyclerview-as-staggered-grid-example.html
+     * RecyclerView 라이브러리는 layoutManager를 커스텀 할 수도 있도록 한다.
+     
+   * adapter 인스턴스를 적용 -> 아이템의 레이아웃과 바인딩되는 adapter 클래스를 만들어주어야 함.
+   
+5. Adapter 클래스를 만들어준다.
+
+  * getItemCount
+
+    * adapter에 의하여 보유되고 관리될 아이템의 총 개수를 리턴
+    * 해당 개수에 근거하여, RecyclerView 라이브러리는 리스트 아이템들에 대한 숫자만큼 아이템을 보여줌(재활용하여)
+    
+  * onCreateViewHolder
+
+    * 리스트의 각 아이템의 뷰를 create -> 리스트 아이템의 레이아웃을 가져와서 생성(binding 객체를 여기서 활용)
+    * 초기에 몇 번 호출됨으로써 일정 개수를 만들어두고, 이것들을 스크롤 시 재사용
+    * 이를 위하여, 6.과 같이 아이템을 위한 레이아웃을 생성
+    * 해당 레이아웃을 이용하여 DataBinding 객체를 만들고, 해당 Binding 객체를 생성자로 가지는 ViewHolder 클래스를 반환하도록 한다.
+      * 필요한 것 : LayoutInflater
+    * 클릭 시의 이벤트 등을 여기서 정의하는 것이 좋음(also 스코프 함수 활용)
+    
+  * onBindViewHolder
+
+    * 레이아웃의 각 view에 activity/fragment로부터 넘겨받은 데이터를 할당해준다.
+    
+      * 초기에 보여질 값을 '설정'하는 작업은 ViewHolder 클래스에서 이뤄지도록 한다.
+      * ViewHolder 내부의 bind 메소드를 호출하도록 하는 것이 best practice
+      
+6. 아이템을 위한 Layout을 생성한다.
+
+   * databinding/viewBinding 등으로 정의
+   
+7. 아이템 layout의 view와 대응되는 데이터들을 담은 data class를 생성한다.
+
+8. View Controller(Activity/Fragment) 파일에서 item에 들어갈 데이터들의 리스트를 생성한다.(convention)
+
+9. 4.에서 adapter를 설정한다.
+
+---
+
+### 5.3. Adapter에서 list item에 대한 변경을 가하고자 할 때 방법들
+
+* 방법 1. ViewHolder 클래스 내부에 정의한 bind() 함수에서 정의
+  * 장점 : 손쉽게 설정 가능
+  * 단점 : 제약 사항이 존재 -> 선택된 아이템에 대응하는 객체 데이터만 다룰 수 있음
+
+* 방법 2 : 고차함수를 활용하여 controller view에서 클릭 시의 이벤트를 정의하여 adapter로 넘겨주는 방법
+  * view controller로 선택된 아이템(객체)를 넘겨주어야 할 때 유용하다.
