@@ -1275,3 +1275,159 @@ class CoroutineActivity : AppCompatActivity() {
   * CoroutineScope 외에도, GlobalScope라는 것도 존재
     * GlobalScope : 최상위 레벨의 코루틴 scope으로, 애플리케이션 생명주기 단위로 실행 -> 거의 사용하지 않음
   * Scope는 coroutine context를 참조하기 위해 사용된다는 점도 기억할 것
+
+* Coroutine Context
+
+  * Dispatchers
+    * 코루틴이 어느 종류의 Thread에서 수행되도록 할 것인지
+    * Structured Concurrency(구조화된 동시성)에 따르면, 
+      * **코루틴은 항상 main thread(Dispatchers.Main)에서 시작하고 다른 background thread(Dispatchers.IO)로 전환**되도록 해야함
+    * Dispatchers.Main(자주 사용)
+      * Coroutine이 Main Thread에서 동작
+      * 안드로이드 상에서는 오직 하나의 Main Thread가 존재하기 때문에, 여러 Coroutine(scope)들을 main thread에서 실행시키기 시작한다면, 하나의 main thread에서 여러 코루틴들이 실행될 것이다.
+      * 간단한 작업을 수행하는 데 사용 -> 모든 ui 작업들, LiveData로부터 얻은 변경 사항을 적용하는 함수 실행 등... 
+    * Dispatchers.IO(자주 사용)
+      * Coroutine이 Background Thread에서 동작
+      * run in a background thread from **a shared pool of on-demand created threads**
+      * Default Dispatcher와 Thread를 공유
+      * 로컬 데이터베이스, 네트워크 통신, 파일 관련 작업에 활용
+    * Dispatchers.Default
+      * CPU를 많이 활용하는 작업에 사용
+        * 큰 리스트를 정렬
+    * Dispatchers.Unconfined
+      * GlobalScope와 함께 사용되는 Dispatcher
+      * 이것을 활용하면, Coroutine은 현재 Thread에서 동작
+      * 사용하지 않는 것이 권장됨
+    * 그 외에, 사용자 커스텀 Dispatcher 역시 만들 수 있다.
+    * Room, Retrofit 같은 라이브러리에서는 별도의 Background Thread에서 동작을 수행할 수 있도록 자체적으로 제작된 Dispatcher를 활용
+      * 따라서, **Room/Retrofit 사용 시**, 개발자는 Main Dispatcher에서 손쉽게 활용할 수 있게 된다. -> 즉, **Thread를 바꿔주는 코드를 작성할 필요가 없다.**
+  
+  * Job Instance
+
+  * "+" operator가 여러 개의 coroutine context를 병합하기 위해 사용
+    * ex) CoroutineScope(Dispatchers.IO + job)
+
+* Coroutine Builders
+
+  * coroutine scope의 확장 함수로서, 새로운 Coroutine을 시작하기 위해 사용
+
+  * 종류
+    * launch
+      * 현재 Thread의 동작을 멈추지 않고 새로운 코루틴을 시작시킨다.
+      * launch를 여러 번 호출하면 여러 코루틴들을 병렬적으로 수행시킬 수 있다.
+      * Job (instance)를 return하며, 다른 곳에서 사용될 수 있음
+      * 단순히 실행만 시키고 반환값이 필요 없는 경우 사용된다.
+      * 즉, 이 코루틴 builder로는 scope에서 수행한 연산에 대한 결과를 return값으로 가져오지 못한다는 것이다.
+    * async
+      * launch와는 달리, 반환값을 가져올 수 있다 -> Deferred<T> 형태로 반환되며, await()로 해당 값을 조회 가능
+      * 그 외에는 launch와 동일(현재 Thread의 동작을 멈추지 않고 새로운 코루틴을 시작시킨다. 여러 번 호출하면 여러 코루틴들을 병렬적으로 수행시킬 수 있다.)
+    * produce
+      * a stream of elements를 생산하는 코루틴을 실행시키는 builder
+      * ReceiveChannel(의 instance)를 반환
+    * runBlocking
+      * coroutine이 실행되는 동안 현재 coroutine이 실행되고 있는 Thread를 중지시킴
+      * 결괏값을 반환할 수 있다.(T) -> 마지막 줄에 정의 가능
+
+* Structured Concurrency?
+
+  * 코루틴 사용 과정에서 메모리 누수를 방지하고, 생산적으로 코루틴을 관리하기 위한 language features
+
+
+### 6.4. Switching The Thread of a Coroutine
+
+* withContext()
+
+```
+class CoroutineActivity : AppCompatActivity() {
+    private var count = 0
+    private lateinit var binding: ActivityCoroutineBinding
+    companion object {
+        const val TAG = "CoroutineActivity"
+    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_coroutine)
+
+        binding.btnCount.setOnClickListener {
+            binding.tvCount.text = count++.toString()
+        }
+
+        binding.btnDownload.setOnClickListener {
+            // run on background thread
+            CoroutineScope(Dispatchers.IO).launch {
+                // long runnign task
+                downloadUserData()
+            }
+        }
+    }
+
+    // 시간이 오래 걸리는 작업
+    private suspend fun downloadUserData() {
+        for (i in 1..200_000) {
+            // Log.i(TAG, "downloading $i in ${Thread.currentThread().name}")
+            
+            // IO Thread 상에서 실행하면, App은 crash => calledFromWrongThreadException
+            // UI 계층구조를 만든 UI 쓰레드만이 View에 접근할 수 있음
+            // context 전환 : withContext()
+            // withContext는 suspend function이므로, 다른 suspend function 혹은 coroutine scope 내부에서만 실행 가능
+            withContext(Dispatchers.Main) {
+                binding.tvUserMessage.text = "downloading $i"
+            }
+        }
+    }
+}
+```
+
+### 6.5. suspending functions
+
+> 쓰레드의 Blocking을 방지하고, 사용자 경험에 방해가 없도록 하기 위하여 사용
+
+* 어떤 coroutine의 실행이 중단되면, 해당 함수의 현재 stack frame이 복사되어 메모리에 저장된다.
+  * stack frame : https://eliez3r.github.io/post/2019/10/16/study-system.Stack-Frame.html
+* 특정 작업을 마치고 나서 중단된 함수가 resume되면, 메모리에 저장되어 있던 stack frame에 대한 데이터가 다시 복사되어 다시 실행이 시작된다.
+
+* suspending functions - 코루틴 API를 사용하면서 작업을 편하게 해주는 것들은 모두 suspend function이다.
+
+  * withContext
+  * withTimeout
+  * withTimeoutOrNull
+  * join
+  * delay
+  * await
+  * supervisorScope
+  * coroutineScope
+  * ... 기타 Room/Retrofit 라이브러리 역시 작업을 편리하게 할 수 있도록 하는 suspend function 제공
+
+* suspend function임은 곧 coroutine scope/suspend function에서만 호출될 수 있는 함수임을 의미한다.
+  * 그 역은 성립하지 않는다. coroutine scope/suspend function 내부에서는 suspend function을 실행할 수 있을 뿐만 아니라, regular function도 실행 가능
+  * 또한, suspend라는 키워드를 통하여 우리는 해당 함수가 heavy, long running task임을 알 수 있음
+  
+* 원리 - java 코드를 통하여
+  * 두 번째 코드는 첫 번째 Kotlin Code가 Java로 변환된 것
+  * java 코드에서는 suspend function이라는 키워드가 존재하지 않음을 확인할 수 있음
+    * "Continuation" 타입을 가진 매개변수 존재
+    * Continuation이란?
+      * Kotlin Interface로, suspend function을 resume하기 위한 structure들을 가지고 있음
+
+```
+class SuspendDemo {
+    private fun firstFunction() {
+        
+    }
+    
+    private suspend fun secondFunction() {
+        
+    }
+}
+```
+
+```
+public final class SuspendDemo {
+   private final void firstFunction() {
+   }
+
+   private final Object secondFunction(Continuation $completion) {
+      return Unit.INSTANCE;
+   }
+}
+```

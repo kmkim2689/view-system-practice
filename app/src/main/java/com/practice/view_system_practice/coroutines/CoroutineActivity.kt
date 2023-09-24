@@ -9,6 +9,7 @@ import com.practice.view_system_practice.databinding.ActivityCoroutineBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CoroutineActivity : AppCompatActivity() {
     private var count = 0
@@ -32,13 +33,20 @@ class CoroutineActivity : AppCompatActivity() {
                 downloadUserData()
             }
         }
-
     }
 
     // 시간이 오래 걸리는 작업
-    private fun downloadUserData() {
+    private suspend fun downloadUserData() {
         for (i in 1..200_000) {
-            Log.i(TAG, "downloading $i in ${Thread.currentThread().name}")
+            // Log.i(TAG, "downloading $i in ${Thread.currentThread().name}")
+
+            // IO Thread 상에서 실행하면, App은 crash => calledFromWrongThreadException
+            // UI 계층구조를 만든 UI 쓰레드만이 View에 접근할 수 있음
+            // context 전환 : withContext()
+            // withContext는 suspend function이므로, 다른 suspend function 혹은 coroutine scope 내부에서만 실행 가능
+            withContext(Dispatchers.Main) {
+                binding.tvUserMessage.text = "downloading $i"
+            }
         }
     }
 }
