@@ -13,12 +13,17 @@
         android:theme="@style/Theme.Viewsystempractice"
         tools:targetApi="31">
         <activity
+            android:name=".coroutines.VmScopeDemoActivity"
+            android:exported="false" />
+        <activity
+            android:name=".coroutines.ParallelDecompositionActivity"
+            android:exported="false" />
+        <activity
             android:name=".coroutines.CoroutineMission1Activity"
             android:exported="false" />
         <activity
             android:name=".coroutines.CoroutineActivity"
             android:exported="true">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -30,9 +35,7 @@
             android:exported="false" />
         <activity
             android:name=".navigation.BaseActivity"
-            android:exported="false">
-
-        </activity>
+            android:exported="false" />
         <activity
             android:name=".TwoWayActivity"
             android:exported="false" />

@@ -731,7 +731,7 @@ class VmAccActivity : AppCompatActivity() {
     android:layout_height="wrap_content"
     android:textSize="36sp"
     app:layout_constraintBottom_toTopOf="@id/tv_count"
-    android:text="@{viewModel.userName}" />
+    android:text="@={viewModel.userName}" />
   ```
   
 -- -- --
@@ -1429,5 +1429,384 @@ public final class SuspendDemo {
    private final Object secondFunction(Continuation $completion) {
       return Unit.INSTANCE;
    }
+}
+```
+
+### 6.6. async & await - for parallel decomposition
+
+* 온라인으로부터 4(여러) 개의 데이터를 모두 가져와 최종 결과를 유저에게 보여주는 방법?
+
+* 가정
+  * task 1 : 10초 소요
+  * task 2 : 15초 소요
+  * task 3 : 12초 소요
+  * task 4 : 13초 소요
+
+* 이것들을 만약 하나하나(동기적으로) 실행한다면, 10 + 15 + 12 + 13 = 총 50초를 기다려야 한다.
+  * 사용자 경험에 악영향
+
+* 그 대신, 이것들을 병렬적으로 수행한다면 
+  * 15초 안에 모든 작업을 끝낼 수 있음
+
+* 즉, 시간이 오래 걸리는 작업들을 병렬적으로 수행하도록 코드를 작성하고 그것들을 모두 합치는 것을 parallel decomposition이라고 한다.
+
+* 코루틴을 활용한다면, parallel decomposition을 매우 쉽게 수행할 수 있다.
+
+* 예시
+
+  * 가정 : 두 곳의 remote api를 호출
+  * 이 두 api를 호출하여 데이터를 가져오고, 최종 데이터를 유저에게 표출
+
+  ```
+  class ParallelDecompositionActivity : AppCompatActivity() {
+
+    companion object {
+        const val TAG = "ParallelDecompositionActivity"
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_parallel_decomposition)
+        
+        // bad practice - launch builder
+        CoroutineScope(Dispatchers.IO).launch {
+            // sequential decomposition : 순차적으로 구성하는 것
+            // 2개의 suspend function을 하나씩 실행 -> 사실상 동기적으로 실행하는 것
+            // 이것의 문제점 : 동시에 진행하지 못하여 두 태스크를 수행하는 데 18초가 고스란히 사용된다.
+            Log.i(TAG, "calculation started")
+            val stock1 = getStock1()
+            val stock2 = getStock2()
+            val total = stock1 + stock2
+            Log.i(TAG, "total is $total")
+            
+            // 로그를 찍어보면, stock1에 대한 결과가 먼저 찍혀나오고, 그 다음 stock2가 찍히는 것을 확인 가능
+        }
+        
+        // good practice - async builder
+        CoroutineScope(Dispatchers.IO).launch {
+            // parallel decomposition
+            // 
+            Log.i(TAG, "calculation started")
+            val stock1 = async { getStock1() }
+            val stock2 = async { getStock2() } 
+            val total = stock1.await() + stock2.await()
+            Log.i(TAG, "total is $total")
+            
+            // sequential decompositon과는 달리, stock2에 대한 결과가 먼저 찍혀나오고 2초 뒤 stock1이 찍혀나옴
+        }
+  
+        // good practice - async builder -> async in another context
+        CoroutineScope(Dispatchers.Main).launch {
+            // parallel decomposition
+            Log.i(TAG, "calculation started")
+            val stock1 = async(Dispatchers.IO) { getStock1() }
+            val stock2 = async(Dispatchers.IO) { getStock2() } 
+            val total = stock1.await() + stock2.await()
+            // ui 작업 수행(main thread)
+            Toast.makeText(applicationContext, "total is $total", Toast.LENGTH_SHORT).show()
+            Log.i(TAG, "total is $total")
+        }
+    }
+
+    private suspend fun getStock1(): Int {
+        delay(10000L)
+        Log.i(TAG, "stock 1 returned")
+        return 5
+    }
+    private suspend fun getStock2(): Int {
+        delay(8000L)
+        Log.i(TAG, "stock 2 returned")
+        return 10
+    }
+  }
+
+  ```
+  
+### 6.7. Unstructured Concurrency vs Structured Concurrency
+
+* CoroutineActivity 활용
+
+* 상황
+
+  * suspend function 내부에 1개 이상의 coroutine을 병렬적으로 실행시키고자 함.
+  * suspend function의 반환값을 활용
+  * 클래스(UserDataManager)를 하나 만들고, 그 안에 2가지 병렬적으로 이뤄지는 작업의 결과를 활용하여 int를 반환하는 suspend fucntion을 정의
+  * 해당 suspend function을 activity에서 호출, 결과를 디스플레이에 표출
+
+* 구현 방법
+
+1. Unstructured concurrency
+
+* bad practice
+  * 초기 값은 0이고, 코루틴의 동작이 '끝나는' 시점에 코루틴이 변수에 50을 할당
+
+  ```
+  suspend fun getTotalUserCount(): Int {
+      var count = 0
+      
+      CoroutineScope(Dispatchers.IO).launch { 
+      delay(1000L)
+      count = 50
+      }
+      
+      return count
+  }
+  ```
+  
+  ```
+  // unstructured concurrency
+  CoroutineScope(Dispatchers.Main).launch { 
+      binding.tvUserMessage.text = UserDataManager().getTotalUserCount().toString()
+  }
+  ```
+  
+* 결과가 50이 띄워질 것으로 예상할 수 있지만, 그렇지 않고 0이 나옴
+
+* 원인
+
+  * main dispatcher 코루틴 내부에서 suspend function이 수행
+  * suspend function 내부에는 또 다른 coroutine scope이 존재
+  * 자식 코루틴은 부모의 코루틴과 별개로 동작 -> 부모는 자식의 존재를 알지 못함
+  * suspend function 내부의 coroutine 동작들이 마칠 때가지 기다리지 않고 바로 리턴하기 때문에 50으로의 재할당 없이 0이 곧바로 반환되는 것
+
+* Unstructured Concurrency는 값이 반환되기 전까지(suspend function의 동작이 끝날 때까지) 모든 작업들(특히 코루틴 작업들)이 수행되는 것을 보장하지 않음을 의미
+* return 된 이후에도, 자식 코루틴은 계속 실행중일 수 있으며 심지어 부모 코루틴이 실행이 완료된 이후에도 계속 실행중일 수가 있다.
+* unstructured concurrency의 이러한 특성에 대한 이해 없이 구현한다면, 예상치 못한 오류에 직면할 수 있음.
+* 해결 방법으로 async-await, withContext 사용 등이 있다.
+
+  ```
+  class UserDataManager {
+    
+    // 값을 제대로 반환
+    suspend fun getTotalUserCountAsync(): Int {
+        val count = CoroutineScope(Dispatchers.IO).async { 
+            delay(3000L)
+            50
+        }
+        
+        return count.await()
+    }
+  
+    // 값을 제대로 반환
+    suspend fun getTotal(): Int {
+        val count = withContext(Dispatchers.IO) {
+            delay(1000L)
+            50
+        }
+        
+        return count
+    }
+  }
+  ```
+  
+* 하지만, 여기에는 여전히 문제점이 있다.
+
+  * async builder를 활용한다고 해서 unstructured concurrency를 사용해도 된다는 것은 아니다.
+  * 안드로이드에서는, 보통 함수에 에러가 발생하면 그 함수가 exception을 던진다.
+    * 따라서, 그 함수를 "호출한 곳"에서 exception을 찾아 상황을 해결할 수 있다.
+  * **하지만, unstructured concurrency 방식으로 구현한다면, 빌더 함수 내부에서 exception을 찾을 방법이 없다.**
+  * 따라서, structured concurrency의 필요성이 크다.
+
+  
+2. Structured concurrency
+
+> Structured Concurrency는 suspend function이 caller로 return되는 시점에 모든 자식 scope들의 모든 task 완료를 보장한다.
+> 부모 coroutine이 자신의 scope를 자식에게 전달한다는 원리 -> 자식은 부모의 context를 상속받으며, 부모는 자식이 모두 마칠 때까지 대기 
+> 같은 scope를 공유하므로, 자식 scope에서의 error/exception은 부모에게로 전파 가능
+> coroutineScope릍 통해, 부모 coroutine scope의 통제 하에 자식 coroutine을 수행할 수 있도록 한다.
+
+* coroutineScope vs CoroutineScope
+
+  * coroutineScope
+    * suspend function
+    * 자식 스코프를 만들 수 있도록 하는 suspend function
+    * 앞에서 살펴본 사례들과는 달리, 이것으로 만들어진 자식 scope은 suspend function의 **종료 시점에서 동작을 끝까지 이뤄지는 것을 보장**한다.
+    
+  * CoroutineScope
+    * interface
+    
+```
+class StructuredUserDataManager {
+    var count = 0
+    lateinit var deferred: Deferred<Int>
+    suspend fun getTotalUserCount(): Int {
+        // structured concurrency를 구현하기 위하여, CoroutineScope Interface를 활용하지 않는다.
+        // coroutineScope suspend function을 활용하여 child scope 만든다.
+
+        // coroutineScope 내부에서 사용되는 builder function의 경우, 별도의 명시가 없으면
+        // 호출된 곳의 thread와 같은 곳에서 수행된다.
+        // 이 scope의 경우 이 suspend function을 호출하는 coroutine이 main thread 상에서 동작하므로, 기본적으로 main thread에서 실행된다.
+        coroutineScope {
+            // 백그라운드로 전환
+            launch(Dispatchers.IO) {
+                delay(1000L)
+                count = 50
+            }
+
+            deferred = async(Dispatchers.IO) {
+                delay(5000L)
+                10
+            }
+        }
+
+        return count + deferred.await()
+    }
+
+}
+```
+
+```
+// structured concurrency
+CoroutineScope(Dispatchers.Main).launch {
+    binding.tvUserMessage.text = StructuredUserDataManager().getTotalUserCount().toString()
+}
+```
+
+* 정상적으로 원하는 값이 출력된다.
+
+* 그 외에도 Structured Concurrency에는 장점들이 존재
+
+  * exception/error 발생 시, caller에 통지되는 것을 보장한다. -> 에러를 쉽게 찾고 해결 가능
+  * 부모 coroutine에서 시작한 자식 coroutine을 cancel 가능 -> 자식 스코프를 cancel 한다면, 해당 scope 안에서 진행중이던 모든 task는 취소된다.
+
+
+### 6.8. ViewModelScope
+
+> a CoroutineScope tied to a ViewModel
+
+* ViewModel 클래스에서 활용할 수 있는 coroutine scope
+
+* ViewModel 클래스에서 coroutine을 동작시키기 위해서는 coroutine scope이 필요한데, 이를 일반 coroutine scope로 정의하기 보다는 viewmodel의 생명주기를 인식하는 scope를 사용하는 것이 개발하는 데 편하고, 안정적인 앱을 만드는 데 도움이 된다.
+
+* VM이 메모리로부터 클리어 되기 전 onCleared() 콜백을 실행시키는데
+  * 만약 ViewModel 일반적 방법인 CoroutineScope 인터페이스를 활용하여 scope를 형성한다면,
+  * onCleared 메소드에서 coroutine의 동작도 취소하는 작업을 직접 진행해주어야 한다.
+  * 이유는 viewmodel에서 실행시킨 몇몇 coroutine(CoroutineScope Interface로 정의한)들은 viewmodel이 clear 된 이후에도 여전히 동작할 가능성이 있기 때문
+    * 이는 memory leak를 야기할 수 있음
+    * 따라서, onCleared에서 cancel 작업이 필요한 것.
+
+* viewmodel에서 coroutine을 cancel하는 방법 - 때때로 사용되기도 하지만...
+
+  * 문제점 : boilerplate codes
+  * 만약 수많은 ViewModel 클래스가 존재한다면 코루틴 cancel을 위한 같은 코드를 작성해야 함
+
+```
+class VmScopeDemoViewModel: ViewModel() {
+
+    private val job = Job()
+    // runs in a background thread
+    // 위에서 정의한 job을 coroutine scope의 context로 추가한다.
+    // scope에서 실행되는 모든 coroutine을 컨트롤
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+
+    fun getUserData() {
+
+        scope.launch {
+
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        job.cancel() // manually cancel
+    }
+}
+```
+
+* 이를 해결하기 위하여, viewModelScope를 활용
+
+  * 해당 Scope는 ViewModel의 생명주기에 제한된다.
+    * 따라서, ViewModel이 동작할 때에만 이뤄져야 하는 작업을 이것을 이용하여 작성하면 된다.
+    
+  * ViewModel Clear 시, 자동적으로 취소되는 과정이 이뤄진다.
+
+* 사용
+
+  * 훨씬 간결하고 작성하기 쉬움
+
+```
+class VmScopeDemoViewModel: ViewModel() {
+    fun getUserData() {
+        
+        viewModelScope.launch {
+            
+        }
+    }
+}
+```
+
+
+### 6.9. LifecycleScope
+
+> 생명주기를 가지는 객체의 생명주기 동안에만 동작할 수 있는 coroutine scope
+> 즉, 이 scope 내부에 정의된 모든 coroutine은 해당 객체가 destroy(onDestroy)되면 자동으로 취소된다.
+
+* 선언 방법
+  * lifecycle.coroutineScope
+  * lifecycleOwner.lifecycleScope(Activity가 lifecycleOwner의 일종이므로 Activity에서는 lifecycleScope만 표기하면 됨)
+
+  ```
+  lifecycle.coroutineScope.launch { 
+      
+  }
+  
+  lifecycleScope.launch { 
+      
+  }
+  ```
+
+* Activity/Fragment와 같이 lifecycle을 가진 object에서 coroutine을 만들어야 하는 경우에 유용
+
+* viewModelScope와 마찬가지로, onDestroy()에서 별도로 코루틴의 동작을 취소할 코드를 작성할 필요가 없다.
+
+* lifecycleScope의 확장 빌더 함수들
+  * launch : 일반적인 launch 함수
+  * launchWhenCreated : Activity/Fragment가 Create 작업을 완료하였을 때 '한 번만' 호출 => deprecated
+  * launchWhenStarted : Activity/Fragment가 start 작업을 완료하였을 때 '한 번만' 호출 => deprecated
+  * launchWhenResumed : Activity/Fragment가 onResume 작업을 마치고 running 상태가 될 때 '한 번만' 호출 => deprecated
+
+  * 특정 생명주기에 따라 한 번만 수행되도록 하는 코드는 위의 방법 대신 다음과 같이 작성
+
+  ```
+  lifecycleScope.launch { 
+      repeatOnLifecycle(Lifecycle.State.CREATED) {
+          
+      }
+  }
+  ```
+  
+
+### 6.10. LiveData Coroutine Builder
+
+* 보통의 방법으로 LiveData를 사용하는 양상(순서)
+  
+  * ViewModel에서 (Mutable)LiveData를 선언
+  * Repository로부터 데이터를 가져와
+  * MutableLiveData에 해당 데이터를 할당
+  * activity 등에서 observe하여 해당 데이터 사용
+
+* LiveData를 observe 하기 전, viewmodel의 function을 선언하고 그 동작이 완료된 후에야 관찰 가능
+
+* LiveData를 위한 Coroutine Builder
+  * 해당 builder의 block 내부의 코드들은 LiveData가 살아있는 동안 동작
+  * cancel과 정지는 lifecycle owner의 state에 따라 행해진다.
+  * 해당 블록 내부에서는, **emit()** 함수를 활용 가능
+    * LiveData의 값을 set하는 용도로 사용
+
+* 종전의 코드에 비교하여, 많은 코드량이 줄어들었다.
+
+```
+class VmScopeDemoViewModel: ViewModel() {
+
+    private val userRepository = UserRepository()
+    
+    // livedata builder
+    var users = liveData(Dispatchers.IO) { 
+        // liveData builder함수의 매개변수로 livedatascope를 받음.
+        // livedata의 값을 set하기 위한 작업이 오래 걸리는(네트워크, 데이터베이스 등) 작업일 때 활용
+        val result = userRepository.getUsers()
+        // emit()를 활용하여 set -> 없으면 오류
+        emit(result)
+    }
 }
 ```

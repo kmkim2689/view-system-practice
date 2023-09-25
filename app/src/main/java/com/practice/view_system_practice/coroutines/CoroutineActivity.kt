@@ -2,12 +2,16 @@ package com.practice.view_system_practice.coroutines
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.coroutineScope
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.practice.view_system_practice.R
 import com.practice.view_system_practice.databinding.ActivityCoroutineBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -28,9 +32,29 @@ class CoroutineActivity : AppCompatActivity() {
 
         binding.btnDownload.setOnClickListener {
             // run on background thread
-            CoroutineScope(Dispatchers.IO).launch {
+/*            CoroutineScope(Dispatchers.IO).launch {
                 // long runnign task
                 downloadUserData()
+            }*/
+
+            // structured concurrency
+            CoroutineScope(Dispatchers.Main).launch {
+                // binding.tvUserMessage.text = UnstructuredUserDataManager().getTotalUserCount().toString()
+                binding.tvUserMessage.text = StructuredUserDataManager().getTotalUserCount().toString()
+            }
+        }
+
+        lifecycle.coroutineScope.launch {
+
+        }
+
+        lifecycleScope.launch {
+
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.CREATED) {
+
             }
         }
     }
