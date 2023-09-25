@@ -475,7 +475,7 @@ class VmBasicActivity : AppCompatActivity() {
   ```
   
   * 이렇게 하면, viewmodel에 생성자를 추가 가능
-  * 
+  
   ```
   class VmAccViewModel(startingTotal: Int): ViewModel() {
     private var count = 0
@@ -1807,6 +1807,182 @@ class VmScopeDemoViewModel: ViewModel() {
         val result = userRepository.getUsers()
         // emit()를 활용하여 set -> 없으면 오류
         emit(result)
+    }
+}
+```
+
+-- -- --
+## 7. Database
+
+### 7.1. Room
+
+* SQLite란?
+  * SQL Database Engine의 일종으로서, Mobile Application에 많이 사용
+  * 문제는 SQLite를 활용하여 코드를 작성하는 것은 매우 어려운 일
+    * 특히 BoilerPlate 코드가 많아 매우 비효율적
+
+* Room의 등장
+  * 2017년 Room이라는 데이터 유지를 위한 라이브러리가 도입
+  
+
+* Room의 특징
+  * SQLite 위에 추상 데이터 레이어 제공
+  * SQLite의 최대 성능을 활용하여 데이터베이스 접근을 더 유려하게 해줌
+  * 백그라운드에서 데이터베이스 조작을 위한 많은 코드들을 생성해주기 때문에, 직접 작성할 필요가 없다.
+
+* Room의 Annotations
+  * to provide information to Room
+  * Database, Dao, Entity
+
+* 필요한 클래스들
+  * Database class -> database
+  * Dao Interface -> dao which contains the methods used for accessing the database
+  * Entity Data class -> table
+
+* dependencies
+
+  * kotlin kapt plugin이 필요
+    * kapt plugin : kotlin annotation processor
+    * 특히 Room을 사용하기 위해서, annotation processing이 필요하므로 설정해주어야 함.
+    * https://kotlinlang.org/docs/reference/kapt.html
+    
+  ```
+  // room
+  def room_version = "2.5.0"
+
+  implementation "androidx.room:room-runtime:$room_version"
+  annotationProcessor "androidx.room:room-compiler:$room_version"
+  implementation "androidx.room:room-ktx:$room_version"
+  kapt "androidx.room:room-compiler:$room_version"
+  ```
+  
+
+### 7.2. Entity Class(Table)
+
+* id, name, email 칼럼으로 구성된 테이블을 구성
+* data class로 구성하고, @Entity로 annotate한다.
+
+```
+@Entity(tableName = "subscriber_data_table")
+data class Subscriber(
+    @PrimaryKey
+    @ColumnInfo(name = "subscriber_id")
+    val id: Int,
+    @ColumnInfo(name = "subscriber_name")
+    val name: String,
+    @ColumnInfo(name = "subscriber_email")
+    val email: String
+)
+```
+
+* @Entity 안에 tableName을 설정한다. 설정하지 않으면 data class명 그대로 사용된다.
+* @ColumnInfo는 데이터클래스의 변수명과 db에 들어갈 칼럼명이 달라야 하는 경우 사용된다.
+  * 다만, 사용이 권장되지는 않는다. best practice는 data class 변수의 이름들을 그대로 사용하는 것이다.
+  * 프로젝트 규모가 커질수록, 같은 entity를 다른 task/라이브러리(retrofit 등)에서 사용할 수도 있기 때문이다.
+* pk를 @PrimaryKey로 설정한다.
+  * autoGenerate = true라면, 자동으로 번호를 매겨준다.
+
+### 7.3. Data Access Object
+
+```
+@Dao
+interface SubscriberDao {
+    // onConflict : 같은 id가 존재하는 경우 어떻게 할지 결정
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSubscriber(subscriber: Subscriber): Long
+
+/*    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSubscribers(subscribers: List<Subscriber>): List<Long>*/
+
+    @Update
+    suspend fun updateSubscriber(subscriber: Subscriber)
+
+/*    @Update
+    suspend fun updateSubscribers(subscribers: List<Subscriber>)*/
+
+    // 특정 레코드 삭제 시, @Delete로 충분
+    @Delete
+    suspend fun deleteSubscriber(subscriber: Subscriber)
+
+    // query는 컴파일 타임에 검증 -> 잘 동작할 수 있는 쿼리인지 컴파일 타임에 검사
+    // 런타임에 쿼리 자체로 인한 오류는 발생하지 않으므로 room의 장점이라고 볼 수 있음
+    // 모든 레코드를 삭제하고자 할 때에는, 직접 쿼리를 작성해야 한다.
+    @Query("DELETE FROM subscriber_data_table")
+    suspend fun deleteAll()
+
+    // 모든 레코드 가져오기
+    // 단, 바로 LiveData 형태로 가져오고자 한다. - Room 라이브러리를 활용하면 별도의 코루틴을 개발자가 두지 않아도 됨(room에서 다 해줌)
+    // 따라서 이 함수는 background thread에서 수행될 필요가 없고, 그에 따라 suspend 키워드는 생략
+    // return 형태가 LiveData/Flow라면, Room 라이브러리가 background thread에서 해당 작업을 수행해주기 때문
+    @Query("SELECT * FROM subscriber_data_table")
+    fun getAllSubscribers(): LiveData<List<Subscriber>>
+    // 만약 Flow를 사용하고자 한다면, Flow<List<Subscriber>>
+}
+```
+
+* https://www.geeksforgeeks.org/how-to-use-room-with-livedata/
+
+### 7.4. Database Object
+
+```
+@Database(
+    entities = [Subscriber::class],
+    version = 1
+)
+abstract class SubscriberDatabase: RoomDatabase() {
+    abstract val dao: SubscriberDao
+    
+    // 하나의 인스턴스로 Database 객체를 관리하는 것이 best practice - 예상치 못한 에러를 피하기 위함
+    companion object {
+        @Volatile // makes the field immediately made visible to other threads
+        private var INSTANCE: SubscriberDatabase? = null
+        fun getInstance(context: Context): SubscriberDatabase {
+            synchronized(this) {
+                var instance = INSTANCE
+                if (instance == null) {
+                    instance = Room.databaseBuilder(
+                        context, 
+                        SubscriberDatabase::class.java, 
+                        "subscriber_db"
+                    ).build()
+                    INSTANCE = instance
+                }
+                return instance
+            }
+        }
+    }
+    
+}
+```
+
+### 7.5. Repository for MVVM Architecture
+
+* Google에서 추천하는 안드로이드 개발에 최적의 아키텍처
+* Model : data와 관련된 모든 컴포넌트들
+  * Local database와 관련 컴포넌트, 원격 데이터 소스 관련 컴포넌트, repository
+* Repository
+  * 목적 : to provide clean api **for viewmodels to easily get and send data**
+  * 즉 repository는 특정 주제와 관련된 **다양한 data source(database, caches, seb services...)들이 모이는** 매개체
+
+```
+class SubscriberRepository(private val database: SubscriberDatabase) {
+    
+    val subscribers = database.dao.getAllSubscribers()
+    
+    suspend fun insertSubscriber(subscriber: Subscriber) {
+        database.dao.insertSubscriber(subscriber)
+    }
+    
+    suspend fun updateSubscriber(subscriber: Subscriber) {
+        database.dao.updateSubscriber(subscriber)
+    }
+    
+    suspend fun deleteSubscriber(subscriber: Subscriber) {
+        database.dao.deleteSubscriber(subscriber)
+    }
+    
+    suspend fun deleteAllSubscribers() {
+        database.dao.deleteAll()
     }
 }
 ```

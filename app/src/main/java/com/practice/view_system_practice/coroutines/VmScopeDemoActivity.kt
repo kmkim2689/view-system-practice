@@ -15,7 +15,6 @@ class VmScopeDemoActivity : AppCompatActivity() {
         setContentView(R.layout.activity_vm_scope_demo)
         viewModel = ViewModelProvider(this).get(VmScopeDemoViewModel::class.java)
 
-        viewModel.getUserData()
         viewModel.users.observe(this) { users ->
             users?.forEach {
                 // recyclerView 작업하기

@@ -23,12 +23,7 @@
             android:exported="false" />
         <activity
             android:name=".coroutines.CoroutineActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            android:exported="false">
         </activity>
         <activity
             android:name=".recyclerview.RvBasicActivity"
@@ -37,23 +32,33 @@
             android:name=".navigation.BaseActivity"
             android:exported="false" />
         <activity
-            android:name=".TwoWayActivity"
+            android:name=".databinding.TwoWayActivity"
             android:exported="false" />
         <activity
-            android:name=".VmAccActivity"
+            android:name=".viewmodel.VmAccActivity"
             android:exported="false" />
         <activity
-            android:name=".VmBasicActivity"
+            android:name=".viewmodel.VmBasicActivity"
             android:exported="false" />
         <activity
-            android:name=".ObjectBindingActivity"
+            android:name=".databinding.ObjectBindingActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="false" />
         <activity
-            android:name=".ProgressActivity"
+            android:name=".databinding.ProgressActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".room.RoomDemoActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

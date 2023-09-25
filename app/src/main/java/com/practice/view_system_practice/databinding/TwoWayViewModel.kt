@@ -1,4 +1,4 @@
-package com.practice.view_system_practice
+package com.practice.view_system_practice.databinding
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

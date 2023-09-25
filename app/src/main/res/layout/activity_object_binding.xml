@@ -5,13 +5,13 @@
     <data>
         <variable
             name="student"
-            type="com.practice.view_system_practice.Student" />
+            type="com.practice.view_system_practice.databinding.Student" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".ObjectBindingActivity">
+        tools:context=".databinding.ObjectBindingActivity">
 
         <TextView
             android:id="@+id/tv_name"

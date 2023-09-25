@@ -1,4 +1,4 @@
-package com.practice.view_system_practice
+package com.practice.view_system_practice.navigation_mission
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import androidx.navigation.findNavController
+import com.practice.view_system_practice.R
 import com.practice.view_system_practice.databinding.FragmentCompleteBinding
 
 class CompleteFragment : Fragment() {

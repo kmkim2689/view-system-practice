@@ -1,11 +1,10 @@
-package com.practice.view_system_practice
+package com.practice.view_system_practice.databinding
 
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
-import com.practice.view_system_practice.databinding.ActivityProgressBinding
+import com.practice.view_system_practice.R
 
 class ProgressActivity: AppCompatActivity() {
 

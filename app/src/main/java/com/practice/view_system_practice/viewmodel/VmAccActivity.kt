@@ -1,10 +1,10 @@
-package com.practice.view_system_practice
+package com.practice.view_system_practice.viewmodel
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.databinding.DataBindingUtil
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import com.practice.view_system_practice.R
 import com.practice.view_system_practice.databinding.ActivityVmAccBinding
 
 class VmAccActivity : AppCompatActivity() {

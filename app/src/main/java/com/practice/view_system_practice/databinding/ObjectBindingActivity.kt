@@ -1,9 +1,9 @@
-package com.practice.view_system_practice
+package com.practice.view_system_practice.databinding
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import androidx.databinding.DataBindingUtil
-import com.practice.view_system_practice.databinding.ActivityObjectBindingBinding
+import com.practice.view_system_practice.R
 
 class ObjectBindingActivity : AppCompatActivity() {
     private lateinit var binding: ActivityObjectBindingBinding

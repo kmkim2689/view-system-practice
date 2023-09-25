@@ -6,13 +6,13 @@
     <data>
         <variable
             name="viewModel"
-            type="com.practice.view_system_practice.TwoWayViewModel" />
+            type="com.practice.view_system_practice.databinding.TwoWayViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".TwoWayActivity">
+        tools:context=".databinding.TwoWayActivity">
 
         <EditText
             android:layout_width="match_parent"

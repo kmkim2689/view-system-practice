@@ -42,7 +42,7 @@
     </fragment>
     <fragment
         android:id="@+id/completeFragment"
-        android:name="com.practice.view_system_practice.CompleteFragment"
+        android:name="com.practice.view_system_practice.navigation_mission.CompleteFragment"
         android:label="fragment_complete"
         tools:layout="@layout/fragment_complete" >
         <action

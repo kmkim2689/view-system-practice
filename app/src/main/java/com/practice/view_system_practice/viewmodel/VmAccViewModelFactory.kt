@@ -1,4 +1,4 @@
-package com.practice.view_system_practice
+package com.practice.view_system_practice.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
