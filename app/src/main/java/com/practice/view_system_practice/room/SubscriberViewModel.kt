@@ -1,5 +1,6 @@
 package com.practice.view_system_practice.room
 
+import android.util.Patterns
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -38,23 +39,34 @@ class SubscriberViewModel(private val repository: SubscriberRepository): ViewMod
 
     // 클릭 동작 정의
     fun saveOrUpdate() {
-        val name = inputName.value ?: ""
-        val email = inputEmail.value ?: ""
-        if (isEditMode) {
-            updateSubscriber(
-                subscriberBeingUpdated.copy(
-                    name = name,
-                    email = email
-                )
-            )
+        val name = inputName.value
+        val email = inputEmail.value
+
+        if (name == null) {
+            statusMessage.value = Event("enter name")
+        } else if (email == null) {
+            statusMessage.value = Event("enter email")
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(inputEmail.value!!).matches()) {
+            statusMessage.value = Event("enter the correct email")
         } else {
-            insertSubscriber(Subscriber(0, name, email))
+            if (isEditMode) {
+                updateSubscriber(
+                    subscriberBeingUpdated.copy(
+                        name = name,
+                        email = email
+                    )
+                )
+            } else {
+                insertSubscriber(Subscriber(0, name, email))
+            }
+            isEditMode = false
+            inputName.value = ""
+            inputEmail.value = ""
+            saveOrUpdateButtonText.value = "Save"
+            clearAllOrDeleteButtonText.value = "Clear All"
         }
-        isEditMode = false
-        inputName.value = ""
-        inputEmail.value = ""
-        saveOrUpdateButtonText.value = "Save"
-        clearAllOrDeleteButtonText.value = "Clear All"
+
+
     }
 
     // 클릭 동작 정의
@@ -68,27 +80,44 @@ class SubscriberViewModel(private val repository: SubscriberRepository): ViewMod
 
     fun insertSubscriber(subscriber: Subscriber) =
         viewModelScope.launch(Dispatchers.IO) {
-            repository.insertSubscriber(subscriber)
+            val newItemId = repository.insertSubscriber(subscriber)
+            withContext(Dispatchers.Main) {
+                // verification by newly gotten id
+                if (newItemId > -1) {
+                    statusMessage.value = Event("Insert successful")
+                } else {
+                    statusMessage.value = Event("Insert Error")
+                }
+            }
         }
 
-    fun updateSubscriber(subscriber: Subscriber) =
+    private fun updateSubscriber(subscriber: Subscriber) =
         viewModelScope.launch(Dispatchers.IO) {
-            repository.updateSubscriber(subscriber)
+            val numOfSubscribers = repository.updateSubscriber(subscriber)
             withContext(Dispatchers.Main) {
-                statusMessage.value = Event("updated successful")
+                if (numOfSubscribers > 0) {
+                    statusMessage.value = Event("updated successful")
+                } else {
+                    statusMessage.value = Event("update error")
+                }
             }
         }
 
     fun deleteSubscriber(subscriber: Subscriber) =
         viewModelScope.launch(Dispatchers.IO) {
-            repository.deleteSubscriber(subscriber)
+            val numOfDeleted = repository.deleteSubscriber(subscriber)
             withContext(Dispatchers.Main) {
-                inputName.value = ""
-                inputEmail.value = ""
-                isEditMode = false
-                saveOrUpdateButtonText.value = "Save"
-                clearAllOrDeleteButtonText.value = "Clear All"
-                statusMessage.value = Event("deleted successful")
+                if (numOfDeleted > 0) {
+                    inputName.value = ""
+                    inputEmail.value = ""
+                    isEditMode = false
+                    saveOrUpdateButtonText.value = "Save"
+                    clearAllOrDeleteButtonText.value = "Clear All"
+                    statusMessage.value = Event("deleted successful")
+                } else {
+                    statusMessage.value = Event("delete error")
+                }
+
             }
         }
 

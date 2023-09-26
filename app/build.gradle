@@ -17,6 +17,18 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // add the directory of schema location under defaultConfig
+        // database의 exportSchema는 true로 되어야 함에 유의(기본값이 true)
+
+        // write as "annotation processor arguments"
+        // to preserve the schema in the specific directory
+        // key : room.schemaLocation / value : directory name
+        kapt {
+            arguments {
+                arg("room.schemaLocation", "$projectDir/schemas")
+            }
+        }
     }
 
     buildTypes {

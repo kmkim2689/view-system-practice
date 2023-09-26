@@ -52,16 +52,21 @@ class RoomDemoActivity : AppCompatActivity() {
 
     private fun initRecyclerView() {
         binding.rvSubscriber.layoutManager = LinearLayoutManager(this@RoomDemoActivity)
+        adapter = SubscriberRVAdapter { subscriber: Subscriber ->
+            onListItemClick(subscriber)
+        }
+        binding.rvSubscriber.adapter = adapter
         displaySubscriberList()
     }
 
     private fun displaySubscriberList() {
         viewModel.subscribers.observe(this@RoomDemoActivity) {
             Log.i(TAG, it.toString())
-            adapter = SubscriberRVAdapter(it) { subscriber: Subscriber ->
-                onListItemClick(subscriber)
-            }
-            binding.rvSubscriber.adapter = adapter
+            // 변화가 발생할 때마다, adapter 바깥에서 리스트의 값을 갱신
+            adapter.setList(it)
+            // 단순히 adapter 클래스 안에 있는 데이터에만 변화를 주었을 뿐, adapter는 상황을 알지 못함
+            // 따라서 아래와 같이 adapter에 데이터 상 변화가 발생하였음을 알린다.
+            adapter.notifyDataSetChanged()
         }
     }
 

@@ -9,10 +9,13 @@ import com.practice.view_system_practice.databinding.ItemSubscriberBinding
 import com.practice.view_system_practice.room.entity.Subscriber
 
 class SubscriberRVAdapter(
-    private val list: List<Subscriber>,
+
     private val onItemClick: (Subscriber) -> Unit
 )
     : RecyclerView.Adapter<SubscriberRVAdapter.SubscriberViewHolder>() {
+
+    private val list = ArrayList<Subscriber>()
+
     inner class SubscriberViewHolder(val binding: ItemSubscriberBinding)
         : RecyclerView.ViewHolder(binding.root) {
 
@@ -43,4 +46,9 @@ class SubscriberRVAdapter(
     }
 
     override fun getItemCount(): Int = list.size
+
+    fun setList(subscribers: List<Subscriber>) {
+        list.clear()
+        list.addAll(subscribers)
+    }
 }

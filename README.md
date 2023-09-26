@@ -2067,4 +2067,318 @@ class SubscriberRepository(private val database: SubscriberDatabase) {
      }
   ```
   
+### 7.7. Room Data Verification
 
+* Room Database로부터 데이터를 가져오거나 변경 및 삭제할 때, 데이터베이스 작업이 제대로 이뤄졌는지에 대한 검증이 필요
+
+* 따라서, DAO와 repository에서 쿼리들을 정의할 때 검증용 return value를 설정하는 경우가 많음
+
+  * @Insert can return a long value, which is the new rowId for the inserted item (or List<long> if multiple items) 
+  * @Update/@Delete can return an int value, which is the number of updated/deleted rows
+
+  * 예를 들어, 새로 추가한 아이템에 대한 아이디 값을 return 하여 verification을 위해 활용
+  
+  * DAO
+  
+  ```
+  @Insert(onConflict = OnConflictStrategy.REPLACE)
+  suspend fun insertSubscriber(subscriber: Subscriber): Long // for new id of the inserted item
+  ```
+  
+  * repository
+
+  ```
+  suspend fun insertSubscriber(subscriber: Subscriber): Long {
+        // 데이터베이스 쿼리를 진행하고, 그 결과까지 리턴
+      return database.dao.insertSubscriber(subscriber)
+  }
+  ```
+  
+  * ViewModel 적용
+  ```
+  fun insertSubscriber(subscriber: Subscriber) =
+        viewModelScope.launch(Dispatchers.IO) {
+            val newItemId = repository.insertSubscriber(subscriber)
+            withContext(Dispatchers.Main) {
+                // verification by newly gotten id
+                if (newItemId > -1) {
+                    statusMessage.value = Event("Insert successful")
+                } else {
+                    statusMessage.value = Event("Insert Error")
+                }
+            }
+        }
+  ```
+  
+### 7.8. validation of input form
+
+* Patterns 클래스 활용
+  * 이메일의 형식이 맞는지 확인하고 싶을 때
+  
+  ```
+  if (!Patterns.EMAIL_ADDRESS.matcher(inputEmail.value!!).matches()) {
+      statusMessage.value = Event("enter the correct email")
+  }
+  ```
+  
+### 7.9. LiveData와 RecyclerView 효율적으로 사용하기
+
+* ViewModel로부터 리스트 형태의 LiveData를 가져오는 경우,
+* 해당 리스트 데이터를 adapter 클래스에 생성자로 직접 삽입하는 것은 비효율적이다.
+* 따라서, adapter 내부에 변경 가능한 리스트(ArrayList())를 선언하고, LiveData 관찰 중 변화가 일어나면 변경된 리스트를 매개변수로 받는 함수를 정의하여 arrayList에 반영되도록 한다.
+* 이 과정에서 activity 단에서 adapter의 함수를 호출한 후 adapter에 데이터의 변화가 일어났음을 통지해야 UI에 변경 사항이 반영된다.
+  * notifyDataSetChanged() -> 되도록이면 구체적인 메소드를 사용하는 것이 좋지만, 최후의 수단으로 사용 가능
+
+### 7.10. Migrating Database<중요>
+
+* 모종의 사정으로 데이터베이스에 수정을 행해야 할 경우가 존재한다.
+
+  * 테이블에 칼럼 추가하기
+  * 테이블명/칼럼명 변경
+  * 테이블 분리하기
+
+* 데이터베이스에 이러한 변화를 줄 때, 기존에 이미 앱이 설치되어 있던 디바이스의 데이터베이스 상에 있던 데이터를 유지시키면서 데이터베이스에 변화를 가하는 것이 중요하다.
+
+  * 만약 데이터베이스에 변경이 일어나 기존 사용자가 가지고 있던 데이터들이 모두 사라지게 된다면, 이는 사용자 경험을 크게 해치게 된다.
+
+* 따라서 DB에 변화 발생 시, Migration을 신경써서 해주어야 한다.
+
+* 과거에는 복잡한 SQL문을 직접 작성함으로서 migration을 진행해야 했지만, 최근 2.4.0 버전에서 room은 "Automated Migration"을 도입
+
+  * 다만 몇몇 복잡한 상황에서는 여전히 SQL문 작성이 필요
+
+* Auto Migration 방법
+
+  * entity
+  ```
+  @Entity(tableName = "student_table")
+  data class Student(
+    @PrimaryKey(autoGenerate = true)
+    @ColumnInfo(name = "student_id")
+    val id: Int,
+    @ColumnInfo(name = "student_name")
+    val name: String
+  )
+  ```
+  
+  * dao
+  ```
+  @Dao
+  interface StudentDao {
+    @Insert
+    suspend fun insertStudent(student: Student)
+  }
+  ```
+  
+  * database
+  ```
+  @Database(
+    entities = [Student::class],
+    version = 1
+  )
+  abstract class StudentDatabase: RoomDatabase() {
+  abstract val dao: StudentDao
+  
+    // 하나의 인스턴스로 Database 객체를 관리하는 것이 best practice - 예상치 못한 에러를 피하기 위함
+    companion object {
+        @Volatile // makes the field immediately made visible to other threads
+        private var INSTANCE: StudentDatabase? = null
+        fun getInstance(context: Context): StudentDatabase {
+            synchronized(this) {
+                var instance = INSTANCE
+                if (instance == null) {
+                    instance = Room.databaseBuilder(
+                        context,
+                        StudentDatabase::class.java,
+                        "student_db"
+                    ).build()
+                    INSTANCE = instance
+                }
+                return instance
+            }
+        }
+    }
+
+  }
+  ```
+  
+  * activity
+  ```
+  class StudentActivity : AppCompatActivity() {
+    
+    private lateinit var binding: ActivityStudentBinding
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_student)
+        
+        val dao = StudentDatabase.getInstance(this).dao
+        
+        val nameText = binding.etName
+        val button = binding.btnSubmit
+        
+        button.setOnClickListener { 
+            lifecycleScope.launch { 
+                nameText.text.let {
+                    dao.insertStudent(Student(0, it.toString()))
+                    nameText.setText("")
+                }
+            }
+        }
+    }
+  }
+  ```
+  
+  * 초기 프로젝트에서는, 버전이 1로 되어있음을 확인 가능
+    * 한 번 migration을 진행할 때마다, 버전은 반드시 1씩 늘어나게 된다.
+
+1. 테이블에 column 추가하기
+
+- auto migration을 위해, database의 현재 schema를 json 파일로 export하는 과정이 필요
+  - schema : structure of a database = blueprint
+
+- build.gradle(app)
+  - room 버전을 확인한다. 2.4.0 이상이어야 auto migration 구현 가능
+  - 아래와 같이 작성함으로써, 컴파일 타임에 room은 db의 schema를 export할 수 있다.
+  - 이 과정에서, Database 클래스에서 exportSchema가 false로 설정되어있지는 않은지 확인한다. true로 설정되어 있어야 export 가능
+    - 기본값이 true이므로 굳이 명시할 필요는 없다.
+  
+  ```
+  defaultConfig {
+        // ...
+
+        // add the directory of schema location under defaultConfig
+        // database의 exportSchema는 true로 되어야 함에 유의(기본값이 true)
+
+        // write as "annotation processor arguments"
+        // to preserve the schema in the specific directory
+        // key : room.schemaLocation / value : directory name
+        kapt {
+            arguments {
+                arg("room.schemaLocation", "$projectDir/schemas")
+            }
+        }
+    }
+  ```
+  
+  * clean > rebuild 진행
+    * app > schemas 패키지가 생성됨을 확인 가능
+    * 1.json 파일이 존재 : 버전 1에 대한 스키마 json 파일
+
+  * 이제 칼럼을 추가할 수 있음
+    * 주의사항 : 이미 존재하고 있던 레코드에는 email 값이 없다. 따라서 오류를 방지하기 위해 기존에 존재하던 레코드들의 새로운 칼럼 값을 설정해주어야 한다.
+    * defaultValue를 설정해준다.
+      * 테이블을 살펴보면, 기존 레코드의 새로운 칼럼값이 기본값으로 설정되어 있음을 확인 가능
+    * 만약 defaultValue를 설정해주고 싶지 않다면, nullable type으로 설정한다.
+      * String?
+      * 이 경우, 테이블을 살펴보면, 기존 레코드의 새로운 칼럼값이 비어있음을 확인 가능
+
+  ```
+  @Entity(tableName = "student_table", defaultValue = "none")
+  data class Student(
+    @PrimaryKey(autoGenerate = true)
+    @ColumnInfo(name = "student_id")
+    val id: Int,
+    @ColumnInfo(name = "student_name")
+    val name: String,
+    @ColumnInfo(name = "student_email")
+    val email: String
+  )
+  ```
+  
+  * database 클래스에도 변경 사항에 대한 migration을 진행해준다.
+    * version을 갱신하고, autoMigrations를 설정해준다. 버전이 올라갈 때마다 리스트에 추가해준다.
+  
+  ```
+  @Database(
+    entities = [Student::class],
+    version = 2,
+    autoMigrations = [AutoMigration(from = 1, to = 2)]
+  )
+  abstract class StudentDatabase: RoomDatabase() {
+  abstract val dao: StudentDao
+
+    // 하나의 인스턴스로 Database 객체를 관리하는 것이 best practice - 예상치 못한 에러를 피하기 위함
+    companion object {
+        @Volatile // makes the field immediately made visible to other threads
+        private var INSTANCE: StudentDatabase? = null
+        fun getInstance(context: Context): StudentDatabase {
+            synchronized(this) {
+                var instance = INSTANCE
+                if (instance == null) {
+                    instance = Room.databaseBuilder(
+                        context,
+                        StudentDatabase::class.java,
+                        "student_db"
+                    ).build()
+                    INSTANCE = instance
+                }
+                return instance
+            }
+        }
+    }
+
+  }
+  ```
+  
+  * 다시 clean > rebuild 진행
+    * schemas 폴더에 2.json이 추가됨을 확인 가능
+    * 2.json에 email 필드가 추가된 것으로 보아, ㅁㄴㅇmigration이 정상적으로 이뤄졌음을 확인 가능
+
+2. 테이블 삭제 / 테이블 이름 변경 / 칼럼명 삭제 및 변경
+
+* 이 경우, Room에서는 상세한 사항을 요구한다.
+  * database class에 migration에 대한 상세 사항을 **class** 형태로 기술
+
+* student_course -> student_subject 칼럼명 변경
+
+  * 테이블을 변경한다.
+  ```
+  @Entity(tableName = "student_table")
+    data class Student(
+    @PrimaryKey(autoGenerate = true)
+    @ColumnInfo(name = "student_id")
+    val id: Int,
+    @ColumnInfo(name = "student_name")
+    var name: String,
+    @ColumnInfo(name = "student_email", defaultValue = "none")
+    var email: String,
+    @ColumnInfo(name = "student_subject", defaultValue = "none")
+    var course: String?
+  )
+  ```
+  
+  * db 클래스 내부에 다음과 같이 변경 세부사항을 작성한다.
+    * AutoMigrationSpec을 구현한 클래스를 만든다.
+    * 상단에는 어떠한 변경사항인지에 대한 annotation을 표기하고, 필요한 매개변수들을 입력한다.
+    * https://developer.android.com/training/data-storage/room/migrating-db-versions#automigrationspec
+  ```
+  @RenameColumn(
+      tableName = "student_table",
+      fromColumnName = "student_course",
+      toColumnName = "student_subject"
+  )
+  class Migration3To4: AutoMigrationSpec
+  ```
+  
+  * autoMigrations 리스트에 추가한다. 이 때, 위에서 만들었던 spec도 같이 명시해준다.
+  ```
+  @Database(
+    entities = [Student::class],
+    version = 4,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2), 
+        AutoMigration(from = 2, to = 3), 
+        AutoMigration(from = 3, to = 4, spec = StudentDatabase.Migration3To4::class)
+    ]
+  ) { 
+     //... 
+  }
+  ```
+  
+* 주의사항
+
+  * 만약 2개 이상의 칼럼에 변화를 주고자 한다면, migration을 각기 다른 버전으로 따로따로 진행하여야 한다.
+  * 두 개의 칼럼의 이름을 바꾼다고 하면,
+    * 한 칼럼의 이름을 바꾸고 버전을 올려 빌드 한 후,
+    * 같은 과정을 다른 칼럼에 대해서 반복한다.
