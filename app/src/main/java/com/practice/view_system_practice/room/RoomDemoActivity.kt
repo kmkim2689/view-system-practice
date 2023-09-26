@@ -3,12 +3,14 @@ package com.practice.view_system_practice.room
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.practice.view_system_practice.R
 import com.practice.view_system_practice.databinding.ActivityRoomDemoBinding
 import com.practice.view_system_practice.room.database.SubscriberDatabase
+import com.practice.view_system_practice.room.entity.Subscriber
 import com.practice.view_system_practice.room.repository.SubscriberRepository
 
 class RoomDemoActivity : AppCompatActivity() {
@@ -40,6 +42,12 @@ class RoomDemoActivity : AppCompatActivity() {
 
         initRecyclerView()
 
+        viewModel.message.observe(this) {
+            it.getContentIfNotHandled()?.let { messageText ->
+                Toast.makeText(this, messageText, Toast.LENGTH_SHORT).show()
+            }
+        }
+
     }
 
     private fun initRecyclerView() {
@@ -50,8 +58,14 @@ class RoomDemoActivity : AppCompatActivity() {
     private fun displaySubscriberList() {
         viewModel.subscribers.observe(this@RoomDemoActivity) {
             Log.i(TAG, it.toString())
-            adapter = SubscriberRVAdapter(it)
+            adapter = SubscriberRVAdapter(it) { subscriber: Subscriber ->
+                onListItemClick(subscriber)
+            }
             binding.rvSubscriber.adapter = adapter
         }
+    }
+
+    private fun onListItemClick(subscriber: Subscriber) {
+        viewModel.initUpdateAndDelete(subscriber)
     }
 }

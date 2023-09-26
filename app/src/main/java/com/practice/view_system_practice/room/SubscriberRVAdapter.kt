@@ -8,7 +8,10 @@ import com.practice.view_system_practice.R
 import com.practice.view_system_practice.databinding.ItemSubscriberBinding
 import com.practice.view_system_practice.room.entity.Subscriber
 
-class SubscriberRVAdapter(private val list: List<Subscriber>)
+class SubscriberRVAdapter(
+    private val list: List<Subscriber>,
+    private val onItemClick: (Subscriber) -> Unit
+)
     : RecyclerView.Adapter<SubscriberRVAdapter.SubscriberViewHolder>() {
     inner class SubscriberViewHolder(val binding: ItemSubscriberBinding)
         : RecyclerView.ViewHolder(binding.root) {
@@ -27,8 +30,10 @@ class SubscriberRVAdapter(private val list: List<Subscriber>)
             false
         )
 
-        return SubscriberViewHolder(binding).also {
-
+        return SubscriberViewHolder(binding).also { viewHolder ->
+            binding.llItem.setOnClickListener {
+                onItemClick(list[viewHolder.adapterPosition])
+            }
         }
 
     }

@@ -1986,3 +1986,85 @@ class SubscriberRepository(private val database: SubscriberDatabase) {
     }
 }
 ```
+
+### 7.6. Communicating with View from ViewModel
+
+* 만약 ViewModel에서의 **동작 완료 이후 그 결과**를 **View에 알림**으로써 Activity/Fragment 등에서 그에 따른 UI 작업을 진행하고자 할 때
+
+* 예를 들어, 처리 결과에 따라 Toast 메시지를 띄운다고 할 때,
+  
+  * 별도로 특정 동작들에 대한 함수들로 이뤄진 인터페이스를 만들어, 그것을 Activity에서 구현하여 ViewModel에서 그 함수 구현체를 실행하도록 하는 방법
+    * MVVM 원칙을 위배
+    * ViewModel은 View에 대해 인식(참조)할 수 없어야 하기 때문이다.
+  * SingleLiveDataClass를 만듦으로써 Event를 위한 LiveData를 사용할 수 있음
+    * 문제점 : SingleLiveEvent는 하나의 옵저버에만 제한된다.
+    * 즉, 한 번만 update된다는 것
+  * 따라서, EventWrapper를 사용하는 것이 best practice
+
+* Event Wrapper Class
+
+  * event의 상태를 명시적으로 고려할 수 있도록 한다.
+
+* Event Wrapper for ViewModel 구현하기
+
+  * Event.kt : https://medium.com/androiddevelopers/livedata-with-snackbar-navigation-and-other-events-the-singleliveevent-case-ac2622673150
+  * 해당 링크의 코드를 가져다 사용
+  ```
+  open class Event<out T>(private val content: T) {
+
+    var hasBeenHandled = false
+        private set // Allow external read but not write
+
+    /**
+     * Returns the content and prevents its use again.
+     */
+    fun getContentIfNotHandled(): T? {
+        return if (hasBeenHandled) {
+            null
+        } else {
+            hasBeenHandled = true
+            content
+        }
+    }
+
+    /**
+     * Returns the content, even if it's already been handled.
+     */
+    fun peekContent(): T = content
+  }
+  ```
+  
+  * repository로부터 LiveData 형태로 가져온 데이터의 형태에 따라 event들을 대표하는 wrapper로 감싸는 역할
+  
+  * viewModel에서 활용
+
+    * message는 viewModel 바깥의 클래스(Activity 등)에서도 참조할 수 있다.
+    * 따라서, viewModel에서 더 이상 토스트 메시지를 띄우는 것에 관여할 필요가 없어진다.
+
+  ```
+  private val statusMessage = MutableLiveData<Event<String>>()
+  val message: LiveData<Event<String>>
+    get() = statusMessage
+  ```
+  
+  ```
+  fun updateSubscriber(subscriber: Subscriber) =
+     viewModelScope.launch(Dispatchers.IO) {
+         repository.updateSubscriber(subscriber)
+         withContext(Dispatchers.Main) {
+             statusMessage.value = Event("updated successful")
+         }
+     }
+  ```
+  
+  * Activity에서 활용
+
+  ```
+  viewModel.message.observe(this) {
+         it.getContentIfNotHandled()?.let { messageText ->
+             Toast.makeText(this, messageText, Toast.LENGTH_SHORT).show()
+         }
+     }
+  ```
+  
+
