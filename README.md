@@ -2323,7 +2323,7 @@ class SubscriberRepository(private val database: SubscriberDatabase) {
   
   * 다시 clean > rebuild 진행
     * schemas 폴더에 2.json이 추가됨을 확인 가능
-    * 2.json에 email 필드가 추가된 것으로 보아, ㅁㄴㅇmigration이 정상적으로 이뤄졌음을 확인 가능
+    * 2.json에 email 필드가 추가된 것으로 보아, migration이 정상적으로 이뤄졌음을 확인 가능
 
 2. 테이블 삭제 / 테이블 이름 변경 / 칼럼명 삭제 및 변경
 
@@ -2382,3 +2382,240 @@ class SubscriberRepository(private val database: SubscriberDatabase) {
   * 두 개의 칼럼의 이름을 바꾼다고 하면,
     * 한 칼럼의 이름을 바꾸고 버전을 올려 빌드 한 후,
     * 같은 과정을 다른 칼럼에 대해서 반복한다.
+
+## 8. Retrofit
+
+> 웹 서버로부터 데이터를 가져오거나, 데이터를 업로드하거나, 인증을 하거나, 이미지를 저장하는 등의 작업이 필요
+
+* 통신을 위하여, 웹 서비스의 REST API라는 것을 활용
+* 통신을 하기 위한 다양한 URL을 활용
+* 앱 쪽에서는, URL을 활용하여 HTTP 요청을 해야 한다.
+  * HTTP 요청에는 header / path / query 등을 포함한다.
+  * request를 받은 API는 다시 앱으로 응답 객체를 보내준다.
+    * Response Code => information about success/failure of the request
+    * 성공시 요청한 데이터를 포함
+
+* 통신 시, 응답 데이터는 보통 JSON 포맷으로 제공된다.
+* 따라서, 데이터를 사용하기 위해 이 JSON 포맷을 Kotlin으로 변환하는 작업이 필요하다.
+* 이것을 편하게 해주는 라이브러리가 바로 Retrofit
+* Retrofit은 Coroutine을 support하는 라이브러리
+
+* 필요한 것들
+1. Convert JSON to Kotlin
+* data class
+
+2. Service Interface
+* functions with url endpoints
+
+3. Retrofit Instance
+
+### 8.1. Setup
+
+* dependencies
+```
+// retrofit
+implementation "com.squareup.retrofit2:retrofit:2.9.0"
+
+// GSON converter : to serialize/deserialize JSON <-> Kotlin
+implementation "com.squareup.retrofit2:converter-gson:2.9.0"
+
+// 만약 REST API를 활용해서 xml 포맷을 전송하려고 한다면, SimpleXml을 활용
+implementation "com.squareup.retrofit2:converter-simplexml:2.9.0"
+
+// okhttp3 logging interceptor
+//https://github.com/square/okhttp/tree/master/okhttp-logging-interceptor
+// to get logs for http request and response data
+implementation "com.squareup.okhttp3:logging-interceptor:4.11.0"
+```
+
+* AndroidManifest
+```
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+```
+
+### 8.2. Data Classes for using JSON
+
+* BASE_URL : https://jsonplaceholder.typicode.com/
+
+* to convert json into data classes
+* JSON To Kotlin class plugin
+
+* JSON
+```
+[
+  {
+    "id": 1,
+    "title": "kmkim",
+    "userId": 1
+  },
+  // ...
+]
+```
+
+* Kotlin
+```
+class Albums : ArrayList<AlbumsItem>()
+```
+
+```
+data class AlbumsItem(
+    @SerializedName("id") val id: Int,
+    @SerializedName("title") val title: String,
+    @SerializedName("userId") val userId: Int
+)
+```
+
+### 8.3. Interface with functions(url endpoints)
+
+```
+interface AlbumService {
+    
+    // use coroutines with retrofit -> suspend
+    @GET("/albums") // endpoint
+    suspend fun getAlbums(): Response<Albums>
+}
+```
+
+### 8.4. Retrofit Instance
+
+* use Builder function of the Retrofit Class
+
+```
+class RetrofitInstance {
+    companion object {
+        // 클래스의 인스턴스가 처음으로 생성될 시 먼저 호출
+        const val BASE_URL = "https://jsonplaceholder.typicode.com/"
+        fun getRetrofitInstance(): Retrofit {
+            return Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create())) // JSON <-> Kotlin
+                .build()
+        }
+    }
+}
+```
+
+### 8.5. View Data
+
+```
+class RetrofitActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_retrofit)
+        
+        val textView = findViewById<TextView>(R.id.text_view)
+
+        val retrofitService = RetrofitInstance
+            .getRetrofitInstance()
+            .create(AlbumService::class.java)
+        
+        val responseLiveData: LiveData<Response<Albums>> = liveData { 
+            val response = retrofitService.getAlbums()
+            emit(response)
+        }
+        
+        responseLiveData.observe(this) {
+            // it : retrofit response object we requested
+            // able to get an response object. 이 변환 작업은 GSONConverter로부터 이뤄짐
+            val albums = it.body()?.listIterator() // to get elements one by one - listIterator
+            albums?.let {
+                while (albums.hasNext()) {
+                    val albumsItem = albums.next()
+                    Log.i("RetrofitActivity", albumsItem.title)
+                    val result = " album id : ${albumsItem.id}\n" +
+                            " album title : ${albumsItem.title}" +
+                            " user id : ${albumsItem.userId}\n\n\n"
+                    
+                    // text가 아닌 append 메소드 활용. text로 설정하면 값 하나하나 가져올 때마다 추가가 아닌 변경이 이뤄짐
+                    textView.append(result)
+                }
+            }
+        }
+    }
+}
+```
+
+### 8.6. Http Logging Interceptor
+
+> Retrofit has been created on top of okhttp
+> retrofit uses classes of the okhttp to perform network operations
+
+* http logging interceptor는 okhttp 라이브러리에 속한 기능으로, 앱에서 발생한 네트워크 동작들에 대한 로그를 보여주는 역할을 수행
+  * 개발자에게 유용
+
+* Retrofit Instance Class
+  * add logging interceptor
+
+```
+class RetrofitInstance {
+    
+    companion object {
+        val interceptor = HttpLoggingInterceptor().apply {
+            // level : BODY -> logs headers + bodies of request, response
+            // NONE, BASIC, HEADERS, BODY
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
+        val client = OkHttpClient.Builder().apply {
+            addInterceptor(interceptor)
+        }.build()
+        
+        // 클래스의 인스턴스가 처음으로 생성될 시 먼저 호출
+        const val BASE_URL = "https://jsonplaceholder.typicode.com"
+        fun getRetrofitInstance(): Retrofit {
+            return Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create())) // JSON <-> Kotlin
+                .build()
+        }
+    }
+}
+```
+
+### 8.7. Timeout
+
+* Timeout의 중요성
+  * 앱이 수많은 데이터를 불러와야 할 때, timeout을 설정하면 이점을 볼 수 있음
+  * 기본으로 주어지는 시간보다 더 제한시간을 둔다면 데이터를 제대로 불러올 수 있음
+
+* set timeout : Retrofit Instance에서 진행한다.
+  * okhttpclient 객체 빌드 시 진행
+  * 별도의 설정이 없다면, okhttp는 10초의 timeout 시간을 설정
+  * 만약 많은 시간이 필요하다면, connectTimeout을 통하여 제한시간을 설정
+
+```
+class RetrofitInstance {
+    
+    companion object {
+        val interceptor = HttpLoggingInterceptor().apply {
+            // level : BODY -> logs headers + bodies of request, response
+            // NONE, BASIC, HEADERS, BODY
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
+        val client = OkHttpClient.Builder().apply {
+            addInterceptor(interceptor)
+            connectTimeout(30, TimeUnit.SECONDS) // 요청을 시작한 후 서버와의 TCP handshake가 완료되기까지 지속되는 시간
+            // readTimeout : maximum time gap between 'arrivals' of two data packets when waiting for the server's response
+            // 서버로 요청을 보내는 것이 완료된 시점으로부터 응답을 받는데까지 제한 시간
+            readTimeout(20, TimeUnit.SECONDS)
+            // writeTimeout : maximum time gap between two data packets when 'sending' them to the server
+            // 서버에 요청하기까지 제한 시간
+            writeTimeout(25, TimeUnit.SECONDS)
+        }.build()
+        
+        // 클래스의 인스턴스가 처음으로 생성될 시 먼저 호출
+        const val BASE_URL = "https://jsonplaceholder.typicode.com"
+        fun getRetrofitInstance(): Retrofit {
+            return Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create(GsonBuilder().create())) // JSON <-> Kotlin
+                .build()
+        }
+    }
+}
+```
