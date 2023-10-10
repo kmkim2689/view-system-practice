@@ -2822,3 +2822,125 @@ private fun receiveInput() {
 6. Notification에 처리 완료를 알린다.
 * 주의 : 해당 notification의 channelId와 notificationId가 필요하다.
 * 같은 channel, notification 아이디를 활용해야만 기존의 알림을 덮어쓸 수 있다.
+
+-- -- --
+
+## 10. WorkManager
+
+* Android Background Tasks Management System From Jetpack
+* 왜 사용하는가?
+  * 연기된 백그라운드 작업을 수행할 수 있어야 하는 상황에서 사용
+  * 즉, WorkManager는 앱이 종료되어 있는 상황에서도 시스템이 연기된 백그라운드 작업을 수행하도록 보장한다.
+  * WorkManager에 task를 전달하기만 한다면, 별도의 제약사항의 고려 없이 목적을 달성할 수 있다.
+    * 같은 목적을 달성하기 위해 이전의 어려운 작업을 할 필요가 없다.
+
+* 주의사항 : API 레벨이 23보다 낮다면, WorkManager는 BroadCastReceiver와 AlarmManager를 사용한다.
+  * 23 이상이라면, WorkManager는 JobScheduler를 활용하여 작업을 처리한다.
+
+* WorkManager가 제공하는 것들
+  * Chaining Tasks
+  * Status Updates
+  * set constraints when the task runs
+  * minimum resource usage while processing tasks(battery power...)
+  * supports asynchronous tasks
+  * periodic tasks
+
+* 주의
+  * WorkManager는 백그라운드 "쓰레드"에서 동작해야 하는 작업을 위한 것이 아니다.
+  * 따라서, 프로세스의 종결로부터 살아남을 필요가 없다
+    * Main Thread에서는 Coroutine을 활용하면 됨
+
+* WorkManager Request Types
+  * when scheduling tasks with WorkManager...
+  1. Periodic Work Request
+    * 서버로부터 주기적으로 재고량을 공급받아 업데이트해야 하는 경우
+    * 일정 간격을 설정할 수 있음 -> 분 단위로도 가능하고, 다른 단위로도 가능
+  2. One Time Work Request
+
+* Procedures for scheduling a task using work manager
+1. Create Worker Class(상속)
+2. Create a Work Request
+3. Enqueue the Request
+4. Get the Status Updates
+
+### 10.1. One Time Work Request
+
+* dependencies
+```
+dependencies {
+    implementation "androidx.work:work-runtime-ktx:2.8.0"
+}
+```
+
+1. Worker class를 만든다. - 말 그대로 특정 task를 수행하는 객체
+* 해당 클래스의 경우, 특정 조건을 만족 시 WorkManager 인스턴스에 의해 실행될 Worker이다.
+  * Worker를 상속받는다.
+  * Worker() 클래스는 두 개의 생성자를 필요로 한다. 따라서 상속받는 클래스의 생성자에도 해당 생성자를 받아와야 한다.
+    * context
+    * instance of WorkerParameters
+
+* Worker 클래스에서는 반드시 doWork()라는 이름의 메소드를 구현하여야 한다.
+  * 여기서, 연기될 수 있지만 반드시 실행되어야 할 백그라운드 태스크를 정의
+  * 이 함수는 Result라는 클래스의 인스턴스를 반환해야 한다.
+    * Resource.success() : 해당 task가 성공적으로 마침
+    * Resource.failure()
+
+```
+class UploadWorker(context: Context, params: WorkerParameters): Worker(context, params) {
+    override fun doWork(): Result {
+        return try {
+            for (i in 0..600) {
+                Log.i("UploadWorker", "Uploading $i...")
+            }
+
+            Result.success()
+        } catch (e: Exception) {
+            Result.failure()
+        }
+    }
+}
+```
+
+2. Activity 클래스에서 
+* work request 객체를 만든다.(OneTimeWorkRequest/PeriodicWorkRequest)
+  * 해야할 일(UploadWorker)에 대한 요청을 만들기 위해 Request에 담는 과정
+```
+val oneTimeWorkRequest = OneTimeWorkRequest.Builder(UploadWorker::class.java).build()
+```
+
+* WorkManager 인스턴스를 만들어, 해당 request를 enqueue한다.
+  * enqueue() 메서드를 사용하여 WorkRequest를 WorkManager에 제출
+  * 이 시점에서, Worker 클래스에서 정의한 백그라운드 태스크가 돌아가기 시작함
+  * 
+```
+WorkManager.getInstance(applicationContext).enqueue(uploadRequest)
+```
+
+### 10.2. States of a Work
+
+```
+BLOCKED ENQUEUED RUNNING SUCCEDED
+```
+
+* WorkInfo를 통하여, 실행되는 Work에 대한 다양한 정보를 가져올 수 있다.
+
+```
+val workManager = WorkManager.getInstance(applicationContext)
+val request = OneTimeWorkRequest.Builder(UploadWorker::class.java).build()
+
+workManager.enqueue(request)
+
+// work info를 가져오기 : getWorkInfoById / getWorkInfoByLiveData -> LiveData 형태로 정보를 가져와, 실시간으로 값 변경
+workManager.getWorkInfoByIdLiveData(request.id) // request의 id 필요
+  .observe(this) { workInfo: WorkInfo! ->
+    // workInfo 객체를 통해, Work가 진행되는 상태 등 정보를 가져올 수 있음
+    tv.text = workInfo.state.name
+  }
+```
+
+* Work의 State
+  ![img.png](img.png)
+  * BLOCKED : work들이 체이닝 된 상태에서 해당 work가 block될 때에만 발생
+  * ENQUEUED : work가 실행될 수 있게 된 상태
+  * RUNNING : work가 실행 중인 상태
+  * SUCCEEDED : work가 성공적으로 완료된 상태
