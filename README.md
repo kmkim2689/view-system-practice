@@ -2619,3 +2619,206 @@ class RetrofitInstance {
     }
 }
 ```
+
+## 9. Notifications
+
+* For Android >= 13(api level >= 33) permission is needed
+* AndroidManifest.xml
+```
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+```
+
+* Using Jetpack Notifications
+  * UI 외부에서 앱이 표출해주는 메시지
+
+### 9.1. Starting
+
+* 새로운 프로젝트 제작 시, Minimum SDK가 API level 26 혹은 Android 8로 설정되어 있어야 한다.
+  * 대부분의 notification feature들은 api 레벨 26 이상이어야 동작
+
+* 푸쉬알림 메시지를 생성하는 방법
+  * Notification Channel + Notification Manager
+  * 전자는 푸쉬알림의 종류를 결정하고, 후자는 푸쉬알림을 만들고 디스플레이 하기 위함이다.
+
+  * NotificationManager를 이용
+    * NotificationManager 인스턴스를 바탕으로 메시지를 생성함
+    `private var notificationManager: NotificationManager? = null`
+
+  * Notification을 보내기 전, Notification Channel에 관한 것을 다루는 것이 선행되어야 한다.
+    * Notification Channel은 notification을 전송하기 '이전'에 만들어져 있어야 한다. onCreate() 생명주기에서 생성되고 NotificationManager에 적용되어야 할 것
+    * notification의 channel은 ID, 채널 이름, 그리고 채널에 대한 설명으로 이뤄져 있다.
+    * NotificationChannel 인스턴스를 생성하고, 해당 인스턴스를 NotificationManager 클래스의 `createNotificationChannel()`메소드에 전달함으로써 해당 Notification 종류의 채널을 설정할 수 있다.
+    * notification의 id를 설정
+    
+    `private val channelId = "패키지명.channel1`
+    ```
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        // importance : 해당 채널에 속하는 푸쉬알림이 유저의 동작을 얼마나 방해할지를 결정
+        val importance = NotificationManager.IMPORTANCE_HIGH
+        // Notification Channel Instance 생성
+        val channel = NotificationChannel(channelId, "channelName", importance)
+        // set channel description
+        channel.description = "channel description"
+        
+        // register the notification channel with the system using the notification manager instance
+        notificationManager?.createNotificationChannel(channel)
+    }
+
+    
+    ```
+
+  * NotificationManager Instance를 본격적으로 생성
+    * NotificationCompat
+    * 설정 가능한 것들
+      * 제목 : setContentTitle(문자열)
+      * 본문: setContentText(문자열)
+      * 왼쪽에 나오는 아이콘 : setSmallIcon(아이콘 리소스 아이디)
+      * auto cancel - 클릭 시 알림이 상태바에서 사라지도록 할 것인지 : setAutoCancel(boolean)
+      * priority : setPriority(NotificationCompat.PRIORITY_XXXX)
+    
+  ```
+  notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+  ```
+  
+  ```
+  val notificationId = 45 // 임의의 숫자. 겹치면 같은 알림으로 간주된다.
+  val notification = NotificationCompat.Builder(context: Context)
+      .setContentTitle("title")
+      .setContentText("content")
+      .setAutoCancel(true)
+      .setSmallIcon(R.drawable.ic_xx)
+      .setPriority(NotificationCompat.PRIORITY_HIGH)
+      .build()
+  
+  // Notification Manager를 활용하여, notificationId와 그에 대응하는 NotificationCompat로 만들어진 푸쉬알림 전송
+  notificationManager?.notify(notificationId, notification)
+  ```
+  
+### 9.2. Tap action
+* 알림을 클릭하면, 그에 대응하는 Activity 혹은 Fragment로 이동하는 것이 필요
+* 이 때 필요한 것이, 바로 PendingIntent 객체이다.
+* PendingIntent란?
+  ```
+   애플리케이션 A가 아직 살아 있는지와 관계없이 애플리케이션 B가 애플리케이션 A를 대신하여 사전에 정의된 작업을 실행할 수 있도록 애플리케이션 B에 PendingIntent를 전달할 수 있습니다.
+  ```
+  * 당장 실행하지 않고 앱이 구동되지 않고 있는 중 특정 이벤트가 발생하는 시점에 수행하도록 만들어진 Intent
+  * 즉, 해당 앱을 실행하고 있지 않고 다른 프로세스가 실행중인 시점에, 다른 프로세스에서 해당 앱의 Intent가 동작할 수 있도록 하는 것이 PendingIntent
+  * 가져오는 방법
+    * PendingIntent.getActivity()
+    * PendingIntent.getService()
+    * PendingIntent.getBroadcast()
+
+* PendingIntent 객체를 생성 <- 화면 이동을 위한 일반 Intent도 생성하여 PendingIntent의 get~메소드의 매개변수로 삽입
+  * 그것을 notification 객체(NotificationCompat로 만든 것)에 setContentIntent()의 매개변수로 설정함으로써, 클릭 시 화면 이동 구현 가능
+  
+  ```
+  val notificationId = 45 // 임의의 숫자. 겹치면 같은 알림으로 간주된다.
+  // pending intent
+  val tapResultIntent = Intent(this, NotificationClickActivity::class.java)
+  // context, requestCode(PendingIntent를 가져올 때 구분하기 위한 고유 코드), Intent(실행할 Intent), flag 순으로 표기
+  /*
+  FLAG_CANCEL_CURRENT
+  → 이전에 생성한 PendingIntent 취소 후 새로 생성
+  FLAG_NO_CREATE
+  → 이미 생성된 PendingIntent 가 있다면 재사용 (없으면 Null 리턴)
+  FLAG_ONE_SHOT
+  → 해당 PendingIntent 를 일회성으로 사용
+  FLAG_UPDATE_CURRENT
+  → 이미 생성된 PendingIntent 가 있다면, Extra Data 만 갈아끼움 (업데이트)
+  FLAG_ACTIVITY_CLEAR_TASK
+  →  액티비티를 시작할 때 해당 액티비티 위에 있는 모든 액티비티를 종료하고, 새로 시작하는 액티비티가 애플리케이션의 "작업 스택(Task)"을 시작 상태로 만듭니다.
+  →  일반적으로 FLAG_ACTIVITY_CLEAR_TASK 플래그는 다음과 같은 상황에서 유용하게 사용됩니다:
+  →  로그인 화면으로 이동: 사용자가 로그인 화면으로 이동할 때, 이미 시작된 모든 액티비티를 종료하고 로그인 화면을 시작할 수 있습니다.
+  →  홈 화면으로 이동: 사용자가 앱의 홈 화면으로 이동할 때, 이전에 열려있던 모든 액티비티를 종료하고 홈 화면을 시작할 수 있습니다
+  →  앱 재시작: 사용자가 앱을 완전히 종료하고 다시 시작할 때, 이전에 열려있던 모든 액티비티를 닫고 앱의 초기화면을 시작할 수 있습니다.
+  FLAG_ACTIVITY_FORWARD_RESULT
+  → 시작 액티비티에서 새로운 액티비티를 실행하고, 그 결과를 시작된 액티비티에 결과를 전달하는 역할
+  */
+  val pendingIntent = PendingIntent.getActivity(this, 0, tapResultIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+  val notification = NotificationCompat.Builder(context: Context)
+      .setContentTitle("title")
+      .setContentText("content")
+      .setAutoCancel(true)
+      .setSmallIcon(R.drawable.ic_xx)
+      .setPriority(NotificationCompat.PRIORITY_HIGH)
+       // setContentIntent
+      .setContentIntent(pendingIntent)
+      .build()
+  
+  // Notification Manager를 활용하여, notificationId와 그에 대응하는 NotificationCompat로 만들어진 푸쉬알림 전송
+  notificationManager?.notify(notificationId, notification)
+  ```
+  
+### 9.3. Action Buttons on Notification
+
+* 푸쉬 알림에 액션 버튼을 추가함으로써, 사용자에게 더 나은 사용경험 제공
+
+* Action Button을 만드는 방법
+
+  * 먼저, 해당 버튼의 클릭에 따른 이동을 구현하기 위한 Intent와 PendingIntent를 만든다. 방법은 같은 방법으로
+  * Action 객체를 만든다.
+  ```
+  val action: NotificationCompat.Action = NotificationCompat.Action.Builder(icon아이디, "버튼 텍스트", pendingIntent).build()
+  ```
+  * 그 후, NotificationCompat으로 만든 notification 객체에 addAction() 메소드를 추가
+  `addAction(action)`
+  * 만약, 복수의 action button을 추가하고자 한다면, 따로 action객체를 또 만들어 addAction을 또 명시하면 된다.
+
+### 9.4. Directly Replying Action
+
+* 요즘 문자 앱에서는 notification에서 바로 답장이 가능하도록 replying action이 제공되고 있음
+* 이를 통해 사용자가 앱을 실행할 필요 없이 바로 답장이 가능 -> 사용자 경험 향상
+
+* 필요한 것
+  * 답장 버튼 : 클릭 시 text input 필드를 표출시키기 위함
+  * 사용자의 input을 앱으로 받아내기
+
+1. reply를 위한 key를 마련한다.
+* 이 key가 사용되면, 답장 매커니즘이 동작하도록 함
+```
+private val KEY_REPLY = "key_reply"
+```
+
+2. RemoteInput 객체의 instance를 만들어야 하며, 여기에는 reply key와 reply label이 동반된다.
+```
+val remoteInput: RemoteInput = RemoteInput.Builder(KEY_REPLY).run {
+  setLabel("Insert your name")
+  build()
+}
+```
+
+3. 클릭에 대한 action을 만든다. Intent와 PendingIntent를 바탕으로 만들며, 방식은 동일하다.
+```
+val replyAction: NotificationCompat.Action = NotificationCompat.Action.Builder(
+    0,
+    "REPLY",
+    pendingintent
+)
+.addRemoteInput(remoteInput) // 사용자로부터 입력받은 값을 addRemoteInput()메소드에 삽입(RemoteInput 객체)
+.build()
+```
+
+4. Notification Object의 빌더에 추가 - addAction()으로
+```
+addAction(replyAction)
+```
+
+* 이 상태로 알림을 띄우고 텍스트를 입력하여 화면을 이동하면,
+* 알림이 처리중인 상태로 사라지지 않는 문제점 존재
+* 이유는 목적지 Activity에서 해당 값을 받아 처리하지 않았기 때문
+
+5. 목적지 클래스로 이동하여, input을 처리하고, notification에 처리 완료를 알린다.
+```
+private fun receiveInput() {
+    val intent = intent
+    val remoteInput = RemoteInput.getResultsFromIntent(intent)
+    remoteInput?.let {
+        val inputString = it.getCharSequence("key_reply").toString()
+        findViewById<TextView>(R.id.text_view3).text = inputString
+    }
+}
+```
+
+6. Notification에 처리 완료를 알린다.
+* 주의 : 해당 notification의 channelId와 notificationId가 필요하다.
+* 같은 channel, notification 아이디를 활용해야만 기존의 알림을 덮어쓸 수 있다.
