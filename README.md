@@ -2944,3 +2944,235 @@ workManager.getWorkInfoByIdLiveData(request.id) // request의 id 필요
   * ENQUEUED : work가 실행될 수 있게 된 상태
   * RUNNING : work가 실행 중인 상태
   * SUCCEEDED : work가 성공적으로 완료된 상태
+
+
+### 10.3. Constraints
+* WorkManager를 활용해야 하는 대부분의 상황에서, 다양한 조건 하에 코드를 실행시켜야 할 때가 존재
+* WorkManager에게 언제 해당 Work가 동작하여야 하는지에 대한 Constraint가 주어지고 그것이 WorkManager에서 사용된다.
+
+* Constraint를 활용할 수 있는 예시
+  * 앱 서버에 대용량의 비디오 파일을 업로드해야 하는 경우
+  * 오랜 시간과 많은 배터리 자원이 들어가는 케이스
+  * 만약, 어떤 작업이 충전기에 연결되어 있을 때에만 동작하도록 하고 싶은 경우?
+
+* 절차
+
+1. Constraints 인스턴스를 생성한다.
+   * Constraints.Builder()
+   ```
+   val constraints = Constraints.Builder()
+      // 제약 조건 설정
+      .setRequiresCharging(true) // 배터리 충전 시에 동작 가능
+      .setRequiredNetworkType(NetworkType.CONNECTED) // 네트워크 연결 시에만 동작
+      .build()
+   ```
+   
+2. Request(OneTime/Periodic) 객체에 빌더 함수 중 setConstraints(제약객체변수) 설정
+  ```
+  val uploadRequest = OneTimeWorkRequest.Builder(UploadWorker::class.java)
+      .setConstraints(constraints)
+      .build()
+  ```
+
+3. 이렇게 설정하면, 인터넷에 연결이 되어 있지 않거나 충전기에 연결되어있지 않는다면 Work는 동작하지 않게 된다.(요청이 시작되어도, ENQUEUED 상태에서 진행되지 않음)
+  * 인터넷에 연결이 되고 충전이 시작되면, 그 순간 Worker의 동작이 시작된다.(RUNNING)
+
+* WorkManager 라이브러리는 모든 Work에 대한 정보와 상태를 추적할 수 있는 로컬 데이터베이스를 보유
+  * 해당 데이터베이스는 유저가 앱을 실행하고 있지 않는 동안에도 WorkManager가 주어진 일을 수행하도록 할 수 있는 수단
+
+
+### 10.4. Setting Input and Output Data with WorkManager
+* WorkManager를 활용할 때, task에 인자를 보내주어야 할 때가 있음
+* 절차 : request가 시작될 때 Worker 외부에서 Data가 request 객체를 통해 넘어감으로써 Worker가 데이터를 받아볼 수 있는 것이고, Worker의 동작이 완료되었을 때 output을 Result 객체 반환 시 실어보냄으로써 Worker 외부에서 해당 outputData를 활용할 수 있는 것
+1. "Data"라는 클래스의 인스턴스를 생성하여 request 객체에 설정해야 한다.
+* 이 때, Key, Value 형태를 활용
+```
+companion object {
+    const val KEY_COUNT_VALUE = "key_count_value"
+}
+
+// ...
+val data: Data = Data.Builder()
+    .putInt(KEY_COUNT_VALUE, 125)
+    .build()
+```
+
+2. request 객체에 setInputData를 설정한다.
+```
+val uploadRequest = OneTimeWorkRequest.Builder(UploadWorker::class.java)
+  .setConstraints(constraints)
+  .setInputData(data)
+  .build()
+```
+
+3. 해당 Input Data는 이제 request에 대응하는 Worker 클래스에서 활용할 수 있다.
+
+* inputData라는 getter를 활용
+  * Data를 제작했을 때와 같은 Key를 활용하여 조회한다.
+  * inputData.getInt(키, 기본값)
+
+```
+class UploadWorker(context: Context, params: WorkerParameters): Worker(context, params) {
+    override fun doWork(): Result {
+        return try {
+            val count = inputData.getInt("key_count_value", 0)
+            
+            for (i in 0 until count) {
+                Log.i("UploadWorker", "Uploading $i...")
+            }
+
+            Result.success()
+        } catch (e: Exception) {
+            Result.failure()
+        }
+    }
+}
+```
+
+4. 반대로, Worker 클래스의 Output 데이터를 다른 클래스서 받아볼 수 있도록, 비슷한 과정을 수행한다.
+
+* Worker 클래스로부터 끝난 시간을 output으로 받아내고자 한다.
+* Worker 클래스에서 상수를 하나 선언(키 역할)
+```
+companion object {
+    const val KEY_WORKER = "key_worker"
+}
+
+// doWork 메소드 내부
+val time = SimpleDateFormat("dd/M/yyyy hh:mm:ss")
+val currentDate = time.format(Date())
+
+// input과 같은 방식으로, Data 객체를 만든다.
+val output = Data.Builder()
+    .putString(KEY_WORKER, currentDate)
+    .build()
+```
+
+5. Worker의 Result 객체의 인자로 output 데이터를 넣음으로써 전달 가능
+```
+return Result.success(outputData)
+```
+
+6. output을 받아야 하는 장소로 이동
+* 위의 코드에서, work가 성공적으로 마쳤을 경우에 output 데이터를 발행하도록 하였음
+* 따라서 이에 대한 검증이 선행 필요 -> state가 finish되었다는 정보 -> work info를 통해 가져올 수 있음
+
+```
+workManager.getWorkInfoByIdLiveData(uploadRequest.id)
+    .observe(this) {
+        if (it.state.isFinsihed) {
+            val data = it.outputData
+            val message = data.getString("key_worker")
+        }
+    }
+```
+
+### 10.5. Chaining Workers
+
+* WorkManager를 활용하여, 연쇄적/병렬적으로 다른 Task들을 묶어 활용할 수 있다.
+
+* 예시 : 서버로 복수의 이미지들을 업로드해야 하는 상황
+  * 해야할 일 : filtering -> compressing -> uploading
+
+1. Chaining을 구현하기 위해, 2개의 Worker 클래스를 생성한다.
+```
+class FilteringWorker(
+    private val context: Context,
+    private val params: WorkerParameters
+): Worker(context, params) {
+    override fun doWork(): Result {
+        return try {
+            for (i in 0..300) {
+                Log.i("FilteringWorker", "filtering $i")
+            }
+            Result.success()
+        } catch (e: Exception) {
+            Result.failure()
+        }
+    }
+}
+```
+
+```
+class CompressingWorker(
+    context: Context,
+    params: WorkerParameters
+): Worker(context, params) {
+    override fun doWork(): Result {
+        return try {
+            for (i in 0..300) {
+                Log.i("CompressingWorker", "compressing $i")
+            }
+            Result.success()
+        } catch (e: Exception) {
+            Result.failure()
+        }
+    }
+}
+```
+
+2. Worker들을 Chain하여 실행할 장소(여기서는 Activity)에서 request를 생성
+```
+val filteringRequest = OneTimeWorkRequest.Builder(FilteringWorker::class.java).build()
+val compressingRequest = OneTimeWorkRequest.Builder(CompressingWorker::class.java).build()
+```
+
+3. 복수의 Worker를 Chain한다.
+* WorkManager 객체의 확장함수를 활용
+* 3.1. sequential chaining : beginWith -> then(여러 번 가능) -> enqueue
+```
+workManager
+    .beginWith(filteringRequest)
+    .then(compressingRequest)
+    .then(uploadRequest)
+    // 단일 worker만 사용할 때 enqueue 내부에 request 객체를 넣는다.
+    // .enqueue(uploadRequest)
+    .enqueue() // 만약 chain을 한다면, enqueue에는 아무 request도 넣지 않는다.
+```
+
+* 3.2. parallel chaining
+  * 복수의 worker가 병렬적으로 실행
+  * 이것을 구현하기 위해서는, mutableList가 필요
+  * mutableList에 worker들을 추가하는 방식
+  * workmanager 객체의 beginWith() 확장함수에 해당 mutableList를 추가
+  ```
+  val parallelWorkers = mutableListOf<OneTimeWorkRequest>(
+    compressingRequest,
+    downloadingRequest
+  )
+  
+  workManager
+    .beginWith(parallelWorkers)
+    .enqueue()
+  ```
+  
+### 10.6. Periodic Work Requests
+
+* 주기적으로 수행되어야 할 Work가 필요한 경우
+* PeriodicWorkRequest 객체 활용
+
+* 특징
+  * 최소 15분 간격 제공
+
+* 구현 과정
+1. PeriodicWorkRequest 인스턴스 생성
+```
+val periodicWorkRequest = PeriodicWorkRequest.Builder(Worker객체명::class.java, repeatInterval숫자, 시간 단위).build()
+```
+* 시간 단위는 TimeUnit 클래스를 활용
+
+2. WorkManager의 인스턴스를 만들고, 그곳에 request를 enqueue한다.
+```
+private fun setPeriodicWorkRequest() {
+    val workManager = WorkManager.getInstance(applicationContext)
+    
+    val periodicWorkRequest = PeriodicWorkRequest
+        .Builder(DownloadingWorker::class.java, 16, TimeUnit.MINUTES)
+        .build()
+    
+    workManager.enqueue(periodicWorkRequest)
+    
+}
+```
+
+* 16분 간격으로 해당 worker가 실행
