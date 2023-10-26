@@ -3176,3 +3176,117 @@ private fun setPeriodicWorkRequest() {
 ```
 
 * 16분 간격으로 해당 worker가 실행
+
+-- -- --
+
+## 11. Dependency Injection with Dagger2
+
+
+-- -- --
+## 12. Unit Tests
+
+* Unit Test는 Unit과 사용자 간 거의 모든 경우의 가능한 상호작용을 커버할 수 있어야 한다.
+  * 정상적인 투입
+  * 에러를 유발하는 투입 등
+
+* 테스트의 세 가지 카테고리
+  * Unit Test
+    * Unit(Class 혹은 Method) 별 앱의 동작의 유효성을 테스트 -> 전체 테스트의 70%
+  * Integration Test
+    * Unit Test를 통해 모든 클래스들의 동작이 제대로 이뤄짐이 확인된 후, Integration Test를 실행
+    * 각 유닛이 다른 유닛과 잘 동작하는지를 테스트 -> 전체 테스트의 20%
+  * UI Test
+    * 유저가 실제로 사용하는 조작 케이스에 대한 테스트 진행
+    * 10%
+
+* package 구조
+  * 모든 안드로이드 프로젝트를 살펴보면, 크게 세 개의 패키지로 이뤄져 있음을 확인 가능
+    * main : 앱의 소스코드를 작성
+    * test
+    * androidTest
+  * 다른 관점에서 살펴보면, 테스트에는 두 가지 종류가 있는데
+    * local test : runs in our development machine
+      * 즉 개발을 하고 있는 기계 상에서 테스트 수행이 가능한 테스트
+      * 실기계 혹은 에뮬레이터 불필요
+    * instrumented test
+      * 안드로이드 프레임워크를 사용해야 하는 테스트의 경우 여기에 해당
+      * 안드로이드 디바이스가 필요한 테스트
+      * 로컬 테스트보다는 속도가 느리고 들여야 하는 노력도 크지만, 실제 사용자의 사용 양상을 테스트해볼 수 있음
+        * 즉, 현실 세계 반영
+
+* gradle 파일 dependency
+  * "implementation"으로 시작하는 dependency의 경우, 모든 상황에 사용 가능(main, test, androidTest)
+  * local test에서만 사용하는 경우 "testImplementation"
+  * instrumented test에서만 사용하는 경우 "androidTestImplementation"
+
+  * 앱을 출시하게 되면, "implementation"으로 된 것만 apk에 추가되며, 테스트 관련 dependency는 포함되지 않음
+    * 용량 이슈
+
+  * 안드로이드 스튜디오에는 기본적으로 테스트 라이브러리가 dependency로 내장되어 있음
+  * junit : 자바와 코틀린에 사용되는 유명한 테스팅 라이브러리
+    * 특정 기능에 대해 테스트를 사용하려면 다른 dependency를 추가해야함
+    * 각 기능에 대한 공식문서 페이지로 가면 기능에 대한 dependency뿐만 아니라 test를 위한 dependency도 나와있음
+  * espresso : user interface testing framework specially created for android
+  * 또한, 테스트 관련 assertion 라이브러리인 truth 사용
+    * 테스트 실패 등 메시지를 더 읽기 좋게 함
+  ```
+  // https://developer.android.com/jetpack/androidx/releases/lifecycle
+  testImplementation "androidx.arch.core:core-testing:2.2.0"
+  testImplementation "com.google.truth:truth:1.0.1"
+  testImplementation "com.google.truth.extensions:truth-java8-extension:1.1.4"
+  ```
+  
+* 테스트 클래스 만드는 방법
+  * 주로 인터페이스를 구현한 클래스 및 유즈케이스를 대상으로 테스트를 진행
+  * 방법
+    * 클래스(여기서는 CalculationImpl)를 열고 클래스명 부분 바로가기 메뉴 > Generate > Test...
+    * Testing library Junit4 선택
+    * 테스트 클래스명을 설정 -> 본래 클래스명 + Test를 붙이는 것이 일반적
+      * 여기서는 CalculationImplTest
+    * OK를 누르면 테스트 클래스가 들어갈 경로를 설정할 수 있음
+      * Source Roots > Show Existing... 체크 해제하고, androidTest 패키지 혹은 test 패키지를 선택한다.
+      * 여기서는 단순 숫자 연산이므로 test를 선택
+    * 새로운 Test 클래스가 생성됨
+
+* 테스트 케이스 작성하는 방법
+  * 클래스의 함수 하나하나에 대해 테스트를 작성
+  * 기본 원칙은 해당 함수에 어떤 값을 집어넣었을 때, 반환하는 값이 미리 정답으로 설정해 놓은 예상 결과값과 같아야 한다는 것이다.
+  * 즉 여기서는 원의 둘레와 너비를 계산하는 기능을 테스트하는 것이므로, 미리 계산기를 활용하여 예상되는 결과를 테스트 통과값으로 설정
+  * 테스트 함수 naming convention
+    * SubjectUnderTest_actionOrInput_resultState
+      * 기존함수명_값명Given_returns원하는결과
+  * 테스트 함수명 위에 @Test 어노테이션 명시 -> run 버튼 활성화
+    * class에 활성화된 run 버튼을 클릭 시, 모든 테스트 function들을 실행
+    * function 각각에 대해 테스트 실행 시, 그 function에 대해서만 테스트
+  * assertThat 메소드를 활용하여 예상 값과 실제 값을 비교한다.
+  * 아래와 같이 작성. 단, assertThat은 junit의 기능이 아닌 truth의 기능, 즉 import com.google.common.truth.Truth.assertThat을 사용하도록 한다.
+    * is~형태의 메소드를 활용하여 편하게 테스트 가능
+    ```
+    import com.google.common.truth.Truth.assertThat
+    import org.junit.Test
+    
+    class CalculationsImplTest {
+
+        private lateinit var calculationsImpl: CalculationsImpl
+    
+        @Test
+        fun calculateCircumference_radiusGiven_returnsCorrectResult() {
+            calculationsImpl = CalculationsImpl()
+            val result = calculationsImpl.calculateCircumference(2.1)
+            // 예상 결과 : 13.188
+            assertThat(result).isEqualTo(13.188)
+        }
+    }
+    ```
+    
+  * 테스트 run > 결과 확인
+    * Tests passed가 뜨고 BUILD SUCCESSFUL in 숫자가 나오면 테스트 통과
+
+* @Before -> Test에 필요한 객체를 함수에 일일이 선언하는 비효율을 극복하기 위함
+  * generate(alt + insert) > setup function
+  ```
+    @Before
+    fun setUp() {
+        calculationsImpl = CalculationsImpl()
+    }
+  ```
