@@ -3185,6 +3185,11 @@ private fun setPeriodicWorkRequest() {
 -- -- --
 ## 12. Unit Tests
 
+* TDD : Test Driven Development
+  * 테스트 케이스를 미리 만들어 놓고 그것들이 통과하게끔 개발을 진행하는 방식
+    * 뼈대만 만들어 놓고, 구체적인 구현은 테스트가 통과할 수 있도록 구현
+  * edge case들을 고려하는 것이 필요
+
 * Unit Test는 Unit과 사용자 간 거의 모든 경우의 가능한 상호작용을 커버할 수 있어야 한다.
   * 정상적인 투입
   * 에러를 유발하는 투입 등
@@ -3203,7 +3208,7 @@ private fun setPeriodicWorkRequest() {
   * 모든 안드로이드 프로젝트를 살펴보면, 크게 세 개의 패키지로 이뤄져 있음을 확인 가능
     * main : 앱의 소스코드를 작성
     * test
-    * androidTest
+    * androidTest => android의 context 등이 필요한 경우 안드로이드 프레임워크가 필요할 때
   * 다른 관점에서 살펴보면, 테스트에는 두 가지 종류가 있는데
     * local test : runs in our development machine
       * 즉 개발을 하고 있는 기계 상에서 테스트 수행이 가능한 테스트
@@ -3227,7 +3232,7 @@ private fun setPeriodicWorkRequest() {
     * 특정 기능에 대해 테스트를 사용하려면 다른 dependency를 추가해야함
     * 각 기능에 대한 공식문서 페이지로 가면 기능에 대한 dependency뿐만 아니라 test를 위한 dependency도 나와있음
   * espresso : user interface testing framework specially created for android
-  * 또한, 테스트 관련 assertion 라이브러리인 truth 사용
+  * 또한, 테스트 관련 assertion 라이브러리인 truth 사용 : 테스트 케이스를 더 가독성 있게 만듦
     * 테스트 실패 등 메시지를 더 읽기 좋게 함
   ```
   // https://developer.android.com/jetpack/androidx/releases/lifecycle
@@ -3237,7 +3242,7 @@ private fun setPeriodicWorkRequest() {
   ```
   
 * 테스트 클래스 만드는 방법
-  * 주로 인터페이스를 구현한 클래스 및 유즈케이스를 대상으로 테스트를 진행
+  * 클래스 단위로 테스트를 진행하므로, 우선 인터페이스를 구현한 클래스 및 유즈케이스를 대상으로 테스트를 진행
   * 방법
     * 클래스(여기서는 CalculationImpl)를 열고 클래스명 부분 바로가기 메뉴 > Generate > Test...
     * Testing library Junit4 선택
@@ -3282,11 +3287,51 @@ private fun setPeriodicWorkRequest() {
   * 테스트 run > 결과 확인
     * Tests passed가 뜨고 BUILD SUCCESSFUL in 숫자가 나오면 테스트 통과
 
-* @Before -> Test에 필요한 객체를 함수에 일일이 선언하는 비효율을 극복하기 위함
-  * generate(alt + insert) > setup function
+  * @Before -> Test에 필요한 객체를 함수에 일일이 선언하는 비효율을 극복하기 위함
+    * generate(alt + insert) > setup function
   ```
     @Before
     fun setUp() {
         calculationsImpl = CalculationsImpl()
     }
   ```
+  
+
+* Test Doubles
+  * 주로 테스트를 진행할 때, 각 클래스를 따로 테스트하곤 한다.
+  * ViewModel 클래스를 테스트하고 싶다고 가정
+    * ViewModel 클래스에서 dependency로 주입된 클래스들이 존재한다고 하면?
+      * 해당 클래스에 대해 테스트를 수행하고자 할 때 ViewModel 클래스의 인스턴스뿐만 아니라 주입된 클래스의 인스턴스도 필요
+      * 이 때 사용하는 것이 바로 Test Doubles
+      * 만약 특정 클래스(Unit)가 다른 클래스(Unit)와 의존관계를 가지고 있다면, 테스트를 위한 인스턴스를 공급하는 것이 필요
+        * 실제 상황에서 사용하는 클래스는 서드파티 라이브러리(Retrofit, Room) 등으로 인하여 인스턴스를 만들기 어려울 확률이 높음
+        * 또한, 더 다양한 테스트를 위한 함수를 집어넣을 수 있기 때문
+
+![img_1.png](img_1.png)
+
+* Test Doubles에서 많이 사용되는 세 가지 타입
+  * Fakes
+    * 인터페이스에 대한 구현 클래스의 경량화된 버전으로 구현하는 것
+    * fake class를 테스트에 활용
+
+  * Stubs
+    * 메소드 호출에 대해 미리 정해진 답을 공급하는 객체
+    
+  * Mocks
+    * Stubs와 비슷하지만, 테스트 케이스 작성 시 메소드 호출에 대해 답을 설정하는 것을 더 빠르게 할 수 있는 방법
+    * Mocks를 사용하면, 우리는 메소드의 예상 반환값을 동적으로 설정 가능하기 때문
+    
+  * Fakes는 테스팅에 잘 사용되지 않고, testing 프레임워크를 활용하여 Stubs와 Mocks를 주로 만들어 테스트한다.
+    * 이 때 사용되는 것이 Mockito
+
+* Mockito를 활용하여 ViewModel 테스트하기
+  ```
+  testImplementation "org.mockito:mockito-core:$mockitoVersion"
+  ```
+  * CalcViewModel 테스트
+    * CalcViewModel에서 사용되는 인터페이스 구현 클래스는 유효하게 동작됨을 확인했다고 가정하고 테스트 진행
+
+* context 관련 컴포넌트를 dependency로 가지는 클래스에 대한 테스트
+  * context를 통해, 다양한 자원들에 대한 id를 받아올 수 있음
+  * 보통의 UnitTest 방식과는 다른 방식이 필요
+    * 안드로이드 프레임워크를 필요로 하는 테스트를 작성 -> instrumented test -> androidTest directory
