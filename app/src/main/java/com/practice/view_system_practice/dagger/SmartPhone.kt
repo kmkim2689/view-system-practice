@@ -2,7 +2,9 @@ package com.practice.view_system_practice.dagger
 
 import android.util.Log
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 data class SmartPhone @Inject constructor(
     val battery: Battery,
     val simCard: SIMCard,

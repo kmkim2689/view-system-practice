@@ -3,6 +3,7 @@ package com.practice.view_system_practice.dagger
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.practice.view_system_practice.R
+import com.practice.view_system_practice.ViewPracticeApplication
 import javax.inject.Inject
 
 class DaggerPracticeActivity : AppCompatActivity() {
@@ -42,10 +43,12 @@ class DaggerPracticeActivity : AppCompatActivity() {
         // smartPhone.makeACallWithRecording()
 
         // dynamic injection
-        DaggerSmartPhoneComponent.builder()
+/*        DaggerSmartPhoneComponent.builder()
             .memoryCardModule(MemoryCardModule(1000)) // 생성자가 있는 모듈
             .build() // build
-            .inject(this)
+            .inject(this)*/
+
+        (application as ViewPracticeApplication).smartPhoneComponent.inject(this)
         smartPhone.makeACallWithRecording()
     }
 }
