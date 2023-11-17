@@ -3494,6 +3494,66 @@ class DaggerPracticeActivity : AppCompatActivity() {
 
 5. 이렇게 함으로써, Activity 내부에 어떠한 의존성 인스턴스도 선언하지 않고 바로 활용할 수 있게 됨
 
+### Dagger2 - Modules
+
+* Constructor Injection은 편리하고 효율적이지만, 외부 라이브러리로부터 비롯된 인스턴스를 주입할 때는 이것이 통하지 않는다.
+  * 예를 들어, Retrofit 객체 같은 서드파티 라이브러리 객체를 주입받기 전, build() 함수를 통해 인스턴스를 생성해야 한다.
+  * 프로젝트에서 직접적으로 가지고 있지 않은 클래스의 경우, 해당 클래스에 직접 변경할 수도 없고 당연히 @Inject 어노테이션을 추가할 수 없다.
+  * 또한, Context같은 것들은 우리가 인스턴스화하여 가지고 있을 수 없다. 
+  * 이러한 것들을 주입할 수 있도록 도와주는 것이 Dagger의 Module이다.
+  
+* Module을 사용하여, 의존성을 공급하기 위하여 Provider Function을 작성한다.
+
+* 예시 : 앞의 구현 중, MemoryCard 클래스가 서드 파티 라이브러리라고 가정한다.
+1. 기본 가정
+  ```
+  class MemoryCard {
+    init {
+        Log.i("", "Memory Card Constructed")
+    }
+
+    fun getSpaceAvailability() {
+        Log.i("", "Memory Space available")
+    }
+  }
+  ```
+  
+2. MemoryCard(서드 파티 라이브러리)를 주입하기 위한 Module 클래스
+* 반드시 @Module 어노테이션이 붙어야 하며, 함수는 provide로 시작해야 하고 @Provides 어노테이션이 사용되어야 한다.
+```
+@Module
+class MemoryCardModule {
+    @Provides
+    fun provideMemoryCard(): MemoryCard {
+        return MemoryCard()
+    }
+}
+```
+
+3. Constructor Injection에 활용하기 위하여 필요한 Component 인터페이스로 이동하여, Module에서 공급받을 수 있는 의존성 인스턴스를 공급받기
+* 이것은 @Component 어노테이션의 매개변수로 추가한다. 변수명은 module이며, 대괄호의 Array 형태로 추가한다. 앞에서 정의한 Module 클래스들이 들어갈 수 있다.
+* 그러면, Dagger가 알아서 주입을 수행해준다. Component 인터페이스 내부의 함수에 매개변수를 전달할 필요조차 없음.
+* 이 과정을 마치고 rebuild하면 끝
+```
+@Component(
+    modules = [
+        MemoryCardModule::class
+    ]
+)
+interface SmartPhoneComponent {
+    fun getSmartPhone(): SmartPhone
+}
+```
+
+* 일반적으로, Dagger의 Module은 비슷한 셩격의 provider function들을 함께 모아놓기 위하여 활용된다.
+* 주의할 점 
+  * Module 클래스는 인스턴스 형태로 활용되어서는 안된다.
+  * 정말로 필요할 때만 활용해야 한다. Constructor Injection을 활용할 수 있는 상황에서 Module 및 provider function을 만들어선 안된다.
+```
+// wrong
+val memoryCardModule = MemoryCardModule()
+```
+
 -- -- --
 ## 12. Unit Tests
 
