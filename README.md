@@ -3618,6 +3618,68 @@ interface SmartPhoneComponent {
   * Hilt는 Interface를 implement한 클래스에 대해 Inject 어노테이션을 사용하지 않는다. Module에서 끝나기 때문에 Module의 provide함수에서 인스턴스를 직접 만들어 주입한다.
     * Dagger에서는 Interface를 Implement한 클래스 역시 module 클래스의 Provides 함수에서 constructor injection이 필요하다.
 
+### Dagger2 - Field Injection
+* 앞의 예시에서, Activity 상에서 Dependency를 주입받기 위해 다음과 같은 코드를 작성했음
+```
+DaggerSmartPhoneComponent
+    .create()
+    .getSmartPhone() // SmartPhone 객체 가져옴
+    .makeACallWithRecording() // SmartPhone의 멤버 메소드 수행
+```
+
+* 문제점 : 만약 같은 인스턴스를 여러 곳에서 주입받고자 한다면? -> 10군데 넘는 곳에서 주입??
+  * 해결 방안 : Field Injection을 활용하는 것(Constructor를 사용할 수 없는 곳에 한함)
+
+1. Component 인터페이스의 getter 메소드를 제거한다.
+```
+@Component(
+    modules = [
+        MemoryCardModule::class,
+        NickelBatteryModule::class
+    ]
+)
+interface SmartPhoneComponent {
+    
+}
+```
+
+2. inject라는 이름의 함수를 정의한다.(컨벤션) 그리고 그 매개변수로, 해당 의존성을 주입받아야 할 액티비티/프래그먼트를 `하나` 추가한다. 
+* 주입받아야 할 Activity/Fragment가 여러개라면, 각각 inject 함수를 정의해야 함(오버로딩)
+```
+@Component(
+    modules = [
+        MemoryCardModule::class,
+        NickelBatteryModule::class
+    ]
+)
+interface SmartPhoneComponent {
+    fun inject(daggerPracticeActivity: DaggerPracticeActivity)
+    // fun inject(homeFragment: HomeFragment)
+}
+```
+
+3. Activity에서, @Inject 어노테이션과 inject 함수를 활용
+```
+class DaggerPracticeActivity : AppCompatActivity() {
+
+    @Inject // field injection을 위해 필요
+    lateinit var smartPhone: SmartPhone
+    
+    // 그 외 다른 Component Interface로부터의 주입도 가능함
+    // @Inject
+    // lagetinit var memoryCard: MemoryCard
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_dagger_practice)
+
+        // field injection
+        DaggerSmartPhoneComponent.create().inject(this)
+        // 활용
+        smartPhone.makeACallWithRecording()
+    }
+}
+```
 
 -- -- --
 ## 12. Unit Tests

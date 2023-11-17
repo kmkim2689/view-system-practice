@@ -3,9 +3,11 @@ package com.practice.view_system_practice.dagger
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import com.practice.view_system_practice.R
+import javax.inject.Inject
 
 class DaggerPracticeActivity : AppCompatActivity() {
 
+    @Inject
     lateinit var smartPhone: SmartPhone
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,10 +30,15 @@ class DaggerPracticeActivity : AppCompatActivity() {
 
 
         // dagger의 constructor injection
-        DaggerSmartPhoneComponent
+        /*DaggerSmartPhoneComponent
             .create()
             .getSmartPhone() // SmartPhone 객체 가져옴
             .makeACallWithRecording() // SmartPhone의 멤버 메소드 수행
+*/
 
+        // field injection
+        DaggerSmartPhoneComponent.create().inject(this)
+        // 활용
+        smartPhone.makeACallWithRecording()
     }
 }
