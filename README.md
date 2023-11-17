@@ -3181,6 +3181,318 @@ private fun setPeriodicWorkRequest() {
 
 ## 11. Dependency Injection with Dagger2
 
+### Dependencies(Apis used for the project, not objects injected in Classes)
+```
+    implementation 'com.google.dagger:dagger:2.47'
+    kapt 'com.google.dagger:dagger-compiler:2.47'
+```
+
+### Dagger를 사용하지 않는다면?
+* 주입되고 주입받는 클래스들
+```
+// 화살표 방향으로 의존하고 있음을 의미
+            ┌→ Battery
+SmartPhone ─┾→ MemoryCard
+            └→ SIMCard → ServiceProvider(Indirect Dependency to the SmartPhone Class)
+
+```
+
+```
+data class SmartPhone(
+    val battery: Battery,
+    val simCard: SIMCard,
+    val memoryCard: MemoryCard
+) {
+    // 주 생성자를 살펴보면, SmartPhone 클래스는 3개의 다른 클래스에 직접적으로 의존하고 있음을 알 수 있음
+
+    init {
+        battery.getPower()
+        simCard.getConnection()
+        memoryCard.getSpaceAvailability()
+//        Log.i()
+    }
+
+    fun makeACallWithRecording() {
+        Log.i("", "Calling...")
+    }
+}
+
+class Battery {
+    init {
+        Log.i("", "Battery Constructed")
+    }
+
+    fun getPower() {
+        Log.i("", "Battery power is available")
+    }
+}
+
+class MemoryCard {
+    init {
+        Log.i("", "Memory Card Constructed")
+    }
+
+    fun getSpaceAvailability() {
+        Log.i("", "Memory Space available")
+    }
+}
+
+class ServiceProvider {
+    init {
+        Log.i("", "ServiceProvider constructed")
+    }
+
+    fun getServiceProvider() {
+        Log.i("", "Service Provider Connected")
+    }
+}
+
+data class SIMCard(private val serviceProvider: ServiceProvider) {
+    init {
+        Log.i("", "Battery Constructed")
+    }
+
+    fun getConnection() {
+        serviceProvider.getServiceProvider()
+    }
+}
+```
+
+* 만약 Dagger를 사용하지 않고 수동으로 의존성을 주입한다면? : 매우 번거로우며 테스트 및 수정에 어려움을 줌
+```
+class DaggerPracticeActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_dagger_practice)
+        
+        // SmartPhone이라는 하나의 객체를 만들기 위해 Battery, MemoryCard, SIMCard 객체를 주입하는 과정
+        // 이것이 의존성 주입 중 Constructor Injection
+        val battery = Battery()
+        val memoryCard = MemoryCard()
+        val serviceProvider = ServiceProvider()
+        val simCard = SIMCard(serviceProvider)
+        val smartPhone = SmartPhone(battery, simCard, memoryCard)
+    }
+}
+```
+
+### Dependency Injection의 세 가지 타입 => 안드로이드에서는 가능한 Constructor Injection을 활용하는 것이 권장됨
+`필드 삽입은 생성자 삽입을 사용할 수 없는 Android 프레임워크 클래스에서만 사용해야 합니다.(Activity/Fragment/Application 등)`
+1. Constructor Injection : 클래스의 생성자를 통하여 다른 클래스를 주입하는 방식
+2. 같은 결과를 `Method Injection` 방식을 통해 구현할 수도 있음
+```
+class Foo {
+  private lateinit var serviceProvider: ServiceProvider
+  
+  fun setServiceProvider(serviceProvider: ServiceProvider) {
+    this.serviceProvider = serviceProvider
+  } 
+}
+```
+3. 같은 결과를 `Field Injection`을 통해서도 구현 가능
+* 내부의 필드를 public하게 만들어, 외부에서 직접 그 값을 설정
+```
+class Foo {
+  lateinit var serviceProvider: ServiceProvider // public
+ 
+}
+
+class ExternalArea {
+  Foo.serviceProvider = ServiceProvider()
+}
+```
+
+### Dagger2 - Constructor Injection
+
+* 앞의 예시에서, 액티비티에서 의존성으로 활용되는 인스턴스들을 직접 정의하여 주입하였음
+* Dagger2에서는 이것을 피하고자 함
+  * 결합도를 낮추고 유지보수가 쉽도록 하기 위함
+* 중요한 것은 클래스의 바깥에서 인스턴스를 생성하여 클래스 내부에서 주입받도록 하는 것
+
+* 중요 키워드 : 생성자 자체의 가시성
+  * 생성자의 가시성을 통하여, `인스턴스의 생성`을 제어할 수 있다!!!!!
+  ```
+  private constructor 사용:
+
+  class Database private constructor(connectionString: String) {}
+  이 경우, 클래스의 생성자가 private으로 선언되었으므로 외부에서는 해당 생성자를 직접 호출하여 인스턴스를 생성할 수 없습니다. 클래스 내부에서만 생성자를 호출할 수 있습니다. 이런 방식을 사용하면 클래스의 인스턴스 생성을 엄격하게 제어할 수 있습니다.
+  
+  private val 사용:
+
+  class Database (private val connectionString: String) {}
+  이 경우, 생성자의 가시성이 명시되어 있지 않습니다. 그러나 connectionString 매개변수 앞에 private 키워드가 있으므로 해당 매개변수는 클래스 내부에서만 접근 가능한 프로퍼티로 선언됩니다. 이는 생성자를 통해 외부에서는 클래스의 인스턴스를 생성할 수 있지만, connectionString은 외부에서 직접 접근할 수 없게 됩니다. 이는 주로 클래스 내부에서만 사용되는 정보를 보호하고 캡슐화하는 데 유용합니다.
+  
+  따라서, 첫 번째 클래스의 경우 생성자 자체가 private이므로 외부에서 인스턴스를 직접 생성할 수 없습니다. 두 번째 클래스의 경우 생성자는 기본적으로 public이지만, private 키워드를 사용하여 특정 매개변수를 클래스 내부에서만 접근 가능한 프로퍼티로 만듭니다.
+  ```
+
+* 본격적으로 위의 코드를 수정하고자 함
+  * 먼저, Activity에서의 최종 목적은 Activity에서의 별도 인스턴스 선언 과정 없이 SmartPhone 인스턴스를 활용하는 것이다.
+    * Dagger가 SmartPhone 객체를 직접 만들어 Activity에 보내줘야 함
+    * 이것을 위해서는, ServiceProvider, SIMCard, MemoryCard, Battery 인스턴스들도 필요 => 이것들 역시 Dagger 차원에서 만들어주어야 함
+  * 이것을 위해서, Dagger에게 어떤 클래스에서 이러한 역할을 수행해야 할지를 알려줘야 함
+    * 이를 위해 활용하는 annotation : @Inject -> to give permission dagger to use a constructor to make an object of that class, if it is required to inject the object as a dependency.
+    * ***Injection은 재귀적이다.*** 만약 A클래스가 B클래스를 주입받아야 하는데, B클래스 역시 C클래스를 주입받아야 한다면 세 클래스 모두에 @Inject 어노테이션이 필요하다. Dagger가 Injection에 연관된 클래스들을 모두 알아야 의존성 주입이 가능하기 때문이다.
+
+* Dagger에게 알려주기 위하여, constructor 키워드와 @Inject어노테이션 사용
+  * constructor 키워드를 추가함으로써 생성자가 어디서든 visible할 수 있게끔 함(constructor 앞에 가시성 제어자를 함께 사용할 수 있는데, 생략 시 기본적으로 public임을 의미 -> 본래는 public constructor)
+  * constructor 키워드 앞에 @Inject 어노테이션 사용
+
+```
+data class SmartPhone @Inject constructor(
+    val battery: Battery,
+    val simCard: SIMCard,
+    val memoryCard: MemoryCard
+) {
+    // 주 생성자를 살펴보면, SmartPhone 클래스는 3개의 다른 클래스에 직접적으로 의존하고 있음을 알 수 있음
+
+    init {
+        battery.getPower()
+        simCard.getConnection()
+        memoryCard.getSpaceAvailability()
+//        Log.i()
+    }
+
+    fun makeACallWithRecording() {
+        Log.i("", "Calling...")
+    }
+}
+
+class Battery @Inject constructor() {
+    init {
+        Log.i("", "Battery Constructed")
+    }
+
+    fun getPower() {
+        Log.i("", "Battery power is available")
+    }
+}
+
+class MemoryCard @Inject constructor() {
+    init {
+        Log.i("", "Memory Card Constructed")
+    }
+
+    fun getSpaceAvailability() {
+        Log.i("", "Memory Space available")
+    }
+}
+
+class ServiceProvider @Inject constructor() {
+    init {
+        Log.i("", "ServiceProvider constructed")
+    }
+
+    fun getServiceProvider() {
+        Log.i("", "Service Provider Connected")
+    }
+}
+
+data class SIMCard @Inject constructor(private val serviceProvider: ServiceProvider) {
+    init {
+        Log.i("", "Battery Constructed")
+    }
+
+    fun getConnection() {
+        serviceProvider.getServiceProvider()
+    }
+}
+
+```
+
+* 의존성 주입을 위한 Dagger2의 기능들을 활용하기 위해서는, `@Component라는 annotation을 가진 인터페이스`가 필요하다
+  * SmartPhoneComponent.kt
+1. Component 인터페이스에 @Component 어노테이션 추가
+```
+@Component
+interface SmartPhoneComponent {
+}
+```
+
+2. 주입받고 싶은 객체를 반환하는 함수 선언. 우리가 직접 이것을 호출하지 않고 Dagger가 알아서 호출해서 주입해줌
+* 함수명은 무엇이든지 상관 없으나, provide~~식의 네이밍은 Module에서 활용하는 컨벤션이므로 되도록이면 get~식으로 이름 짓는 것이 좋음
+```
+@Component
+interface SmartPhoneComponent {
+    fun provideSmartPhone(): SmartPhone
+}
+```
+
+3. Clean > Rebuild 실행 : java(generated) 패키지를 살펴보면, Dagger에 의해 생긴 의존성 주입을 위한 클래스들을 확인 가능
+* 이 클래스명을 활용하여 의존성 주입을 수행한다!!(여기서는 DaggerSmartPhoneComponent)
+```
+@DaggerGenerated
+@Generated(
+    value = "dagger.internal.codegen.ComponentProcessor",
+    comments = "https://dagger.dev"
+)
+@SuppressWarnings({
+    "unchecked",
+    "rawtypes",
+    "KotlinInternal",
+    "KotlinInternalInJava"
+})
+
+public final class DaggerSmartPhoneComponent {
+  private DaggerSmartPhoneComponent() {
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static SmartPhoneComponent create() {
+    return new Builder().build();
+  }
+
+  public static final class Builder {
+    private Builder() {
+    }
+
+    public SmartPhoneComponent build() {
+      return new SmartPhoneComponentImpl();
+    }
+  }
+
+  private static final class SmartPhoneComponentImpl implements SmartPhoneComponent {
+    private final SmartPhoneComponentImpl smartPhoneComponentImpl = this;
+
+    private SmartPhoneComponentImpl() {
+
+
+    }
+
+    private SIMCard sIMCard() {
+      return new SIMCard(new ServiceProvider());
+    }
+
+    @Override
+    public SmartPhone getSmartPhone() {
+      return new SmartPhone(new Battery(), sIMCard(), new MemoryCard());
+    }
+  }
+}
+```
+
+4. Activity에서 활용하기
+```
+class DaggerPracticeActivity : AppCompatActivity() {
+
+    lateinit var smartPhone: SmartPhone
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_dagger_practice)
+        
+        // dagger의 constructor injection
+        DaggerSmartPhoneComponent
+            .create()
+            .getSmartPhone() // SmartPhone 객체 가져옴
+            .makeACallWithRecording() // SmartPhone의 멤버 메소드 수행
+    }
+}
+```
+
+5. 이렇게 함으로써, Activity 내부에 어떠한 의존성 인스턴스도 선언하지 않고 바로 활용할 수 있게 됨
 
 -- -- --
 ## 12. Unit Tests
