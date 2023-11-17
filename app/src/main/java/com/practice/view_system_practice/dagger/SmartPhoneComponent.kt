@@ -4,7 +4,8 @@ import dagger.Component
 
 @Component(
     modules = [
-        MemoryCardModule::class
+        MemoryCardModule::class,
+        NickelBatteryModule::class
     ]
 )
 interface SmartPhoneComponent {

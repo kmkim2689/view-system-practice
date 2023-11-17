@@ -3554,6 +3554,71 @@ interface SmartPhoneComponent {
 val memoryCardModule = MemoryCardModule()
 ```
 
+### Dagger - Using Interface as a dependency of a class
+* 때로는 클래스 대신 인터페이스를 의존성으로 사용해야할 때가 있음
+  * 가장 대표적인 때가 Repository의 인터페이스를 주입받도록 함으로써, 실제로는 이것을 구현한 다양한 종류의 RepositoryImplementation 클래스를 주입할 수 있도록 하는것
+
+* 예시 : Battery 클래스를 인터페이스로 전환하고, 이것을 구현한 별도의 클래스를 만들기
+```
+// 인터페이스
+interface Battery {
+    fun getPower() // 메소드 추상화
+}
+
+// 인터페이스를 구현한 클래스 => 이것만 하면 안된다.
+class NickelBattery @Inject constructor() : Battery {
+    override fun getPower() {
+        Log.i("", "Power from nickel")
+    }
+}
+```
+
+* Module을 사용하는 것이 올바른 방식이다.
+```
+@Module
+class NickelBatteryModule {
+    @Provides
+    fun provideNickelBattery(
+        nickelBattery: NickelBattery // @Inject로 생성자 주입이 가능하므로 매개변수에 활용 가능
+    ): Battery {
+        return nickelBattery // 초기화가 필요 없이 그대로 반환하면 됨
+    }
+}
+
+```
+
+* 여기서 끝내면 안되고, 이것을 활용하는 Component 인터페이스의 modules에 해당 모듈을 추가한다.
+```
+@Component(
+    modules = [
+        MemoryCardModule::class,
+        NickelBatteryModule::class
+    ]
+)
+interface SmartPhoneComponent {
+    fun getSmartPhone(): SmartPhone
+}
+```
+
+* 이것을 더 간결하게 하는 방법
+  * Module을 클래스가 아닌 추상 클래스로 만들고, '모든' 메소드를 추상 메소드로 만든다.
+  * provide 함수의 바디부분이 필요 없게 된다. dagger가 다 알아서 해주게 된다.
+  * 중요 : abstract function은 @Provides 어노테이션 사용 불가능하기에, @Binds 어노테이션을 사용하고 함수 명도 bind~형태로 설정
+  ```
+  @Module
+  abstract class NickelBatteryModule {
+    @Binds
+    abstract fun provideNickelBattery(nickelBattery: NickelBattery): Battery
+  }
+  ```
+
+* Hilt와 다른 점은?
+  * Hilt와는 달리 Dagger에는 Constructor Injection을 위해 Component 클래스가 필요하다.
+    * 따라서, Module을 만들면 Component Class의 modules에 추가해주어야 한다.
+  * Hilt는 Interface를 implement한 클래스에 대해 Inject 어노테이션을 사용하지 않는다. Module에서 끝나기 때문에 Module의 provide함수에서 인스턴스를 직접 만들어 주입한다.
+    * Dagger에서는 Interface를 Implement한 클래스 역시 module 클래스의 Provides 함수에서 constructor injection이 필요하다.
+
+
 -- -- --
 ## 12. Unit Tests
 
