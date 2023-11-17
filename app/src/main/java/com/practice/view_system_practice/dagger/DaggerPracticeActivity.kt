@@ -37,8 +37,15 @@ class DaggerPracticeActivity : AppCompatActivity() {
 */
 
         // field injection
-        DaggerSmartPhoneComponent.create().inject(this)
+        // DaggerSmartPhoneComponent.create().inject(this)
         // 활용
+        // smartPhone.makeACallWithRecording()
+
+        // dynamic injection
+        DaggerSmartPhoneComponent.builder()
+            .memoryCardModule(MemoryCardModule(1000)) // 생성자가 있는 모듈
+            .build() // build
+            .inject(this)
         smartPhone.makeACallWithRecording()
     }
 }

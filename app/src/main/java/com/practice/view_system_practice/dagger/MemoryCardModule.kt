@@ -4,7 +4,7 @@ import dagger.Module
 import dagger.Provides
 
 @Module
-class MemoryCardModule {
+class MemoryCardModule(val memorySize: Int) {
     @Provides
     fun provideMemoryCard(): MemoryCard {
         return MemoryCard()

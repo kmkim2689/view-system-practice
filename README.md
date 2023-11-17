@@ -3665,7 +3665,7 @@ class DaggerPracticeActivity : AppCompatActivity() {
     @Inject // field injection을 위해 필요
     lateinit var smartPhone: SmartPhone
     
-    // 그 외 다른 Component Interface로부터의 주입도 가능함
+    // 그 외 다른 Component의 modules로 추가된 다른 의존성 주입도 가능함
     // @Inject
     // lagetinit var memoryCard: MemoryCard
 
@@ -3679,6 +3679,39 @@ class DaggerPracticeActivity : AppCompatActivity() {
         smartPhone.makeACallWithRecording()
     }
 }
+```
+
+### 동적으로 인스턴스 주입하기
+* 본래는 Module에 생성자를 추가하는 것은 예기치 않은 동작을 일으키기에 좋지 않지만, 때로는 필요할 때가 있음.
+
+* MemoryCardModule에 생성자 추가해보기
+```
+@Module
+class MemoryCardModule(val memorySize: Int) {
+    @Provides
+    fun provideMemoryCard(): MemoryCard {
+        Log.i("memory card size", "$memorySize")
+       
+        return MemoryCard()
+    }
+}
+```
+
+* 이렇게 되면, 앞의 방식대로 주입받을 수 없게됨
+  * dagger가 더 이상 MemoryCardModule이 어떤 memorySize를 가진 인스턴스인지 알지 못하기 때문이다.
+```
+// 오류
+// field injection
+DaggerSmartPhoneComponent.create().inject(this)
+```
+
+* 해결책 : Builder 함수를 활용
+```
+DaggerSmartPhoneComponent.builder()
+    .memoryCardModule(MemoryCardModule(1000)) // *** 단순 생성자 값이 아닌, 생성자를 가진 인스턴스 형태로 넣어야 함에 유의한다.
+    .build() // build
+    .inject(this)
+smartPhone.makeACallWithRecording()
 ```
 
 -- -- --
