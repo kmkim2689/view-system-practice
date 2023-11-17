@@ -3714,6 +3714,82 @@ DaggerSmartPhoneComponent.builder()
 smartPhone.makeACallWithRecording()
 ```
 
+### Dagger - Application
+* Field Injection / Dynamic Injection을 위해 아래와 같이 사용해왔음
+```
+DaggerSmartPhoneComponent.builder()
+    .memoryCardModule(MemoryCardModule(1000)) // *** 단순 생성자 값이 아닌, 생성자를 가진 인스턴스 형태로 넣어야 함에 유의한다.
+    .build() // build
+    .inject(this)
+smartPhone.makeACallWithRecording()
+```
+
+* 문제점 : 같은 인스턴스를 여러 곳에서 활용한다면, 여러 곳에서 이 코드를 반복적으로 작성해야함
+* 해결책 : Application 클래스에서 정의하여 사용
+
+1. Application 클래스 만들기 + Manifest의 application name 속성 추가
+```
+class ViewPracticeApplication : Application() {
+
+    lateinit var smartPhoneComponent: SmartPhoneComponent
+    override fun onCreate() {
+        super.onCreate()
+        smartPhoneComponent = initDagger()
+    }
+
+    private fun initDagger(): SmartPhoneComponent = DaggerSmartPhoneComponent.builder()
+        .memoryCardModule(MemoryCardModule(1000))
+        .build() // build까지만 진행해야함에 유의
+}
+```
+
+2. 액티비티/프래그먼트에서 활용
+```
+(application as ViewPracticeApplication).smartPhoneComponent.inject(this)
+smartPhone.makeACallWithRecording()
+```
+
+### Singleton 형태로 주입받기
+* @Singleton 어노테이션 -> Component 인터페이스 및 최종적으로 주입할 클래스에 추가한다.
+* 여기서는 SmartPhone객체를 최종적으로 액티비티에서 주입
+* 같은 객체임에도 불구하고 불필요하게 인스턴스가 계속 생성되어 메모리 낭비되는 것을 막을 수 있음
+```
+@Singleton
+@Component(
+    modules = [
+        MemoryCardModule::class,
+        NickelBatteryModule::class
+    ]
+)
+interface SmartPhoneComponent {
+//    fun getSmartPhone(): SmartPhone
+
+    fun inject(daggerPracticeActivity: DaggerPracticeActivity)
+}
+```
+```
+@Singleton
+data class SmartPhone @Inject constructor(
+    val battery: Battery,
+    val simCard: SIMCard,
+    val memoryCard: MemoryCard
+) {
+    // 주 생성자를 살펴보면, SmartPhone 클래스는 3개의 다른 클래스에 직접적으로 의존하고 있음을 알 수 있음
+
+    init {
+        battery.getPower()
+        simCard.getConnection()
+        memoryCard.getSpaceAvailability()
+//        Log.i()
+    }
+
+    fun makeACallWithRecording() {
+        Log.i("", "Calling...")
+    }
+}
+```
+
+
 -- -- --
 ## 12. Unit Tests
 
