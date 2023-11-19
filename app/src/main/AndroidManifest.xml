@@ -19,6 +19,9 @@
         android:theme="@style/Theme.Viewsystempractice"
         tools:targetApi="31">
         <activity
+            android:name=".clean_architecture_1.TmdbClientActivity"
+            android:exported="false" />
+        <activity
             android:name=".dagger.DaggerPracticeActivity"
             android:exported="true">
             <intent-filter>
@@ -29,8 +32,7 @@
         </activity>
         <activity
             android:name=".unit_tests.CalcActivity"
-            android:exported="false">
-        </activity>
+            android:exported="false"></activity>
         <activity
             android:name=".workmanager.WorkManagerActivity"
             android:exported="false" />
@@ -51,7 +53,7 @@
             android:exported="false" />
         <activity
             android:name=".database_migration.StudentActivity"
-            android:exported="false"></activity>
+            android:exported="false" />
         <activity
             android:name=".coroutines.VmScopeDemoActivity"
             android:exported="false" />

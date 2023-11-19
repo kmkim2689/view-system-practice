@@ -1,0 +1,74 @@
+## Clean Architecture Project Example
+
+### What is Clean Architecture?
+* 클린 아키텍처는 소프트웨어를 디자인하기 위한 하나의 방법
+* Martin에 의하여 처음으로 제안되었음
+* 클린 아키텍처는 많은 분야의 프로그래밍/프로젝트에서 사용됨
+
+### Advantages of Clean Architecture
+* 클린 아키텍처는 프로젝트 코드의 낮은 결합성, 높은 수준의 추상성을 달성할 수 있게 해준다.
+  * 다양한 계층으로 코드를 분리
+  * 각 계층은 잘 정의된 책임만을 수행
+* 최종적으로는 코드의 수정과 테스팅을 훨씬 용이하게 해줌
+
+### Why Clean Architecture is needed?
+* 여러 명의 개발자들이 프로젝트에 참여하며 다양한 패키지/모듈을 개발
+* 클린 아키텍처를 잘 적용하면, 한 개발자가 다른 개발자가 하는 일이 무엇인지에 대해 전혀 몰라도 프로젝트 진행에 무리가 없어진다.
+
+### Use Cases in Clean Architecture
+* 안드로이드 개발에서 클린 아키텍처를 MVVM과 함께 적용하고자 할 때, `Use Case`라는 다른 컴포넌트가 필요
+  * Repository와 ViewModel 사이에 존재
+* UseCase : 특정 로직만을 실행하는 클래스로, SRP를 따르기 위한 것이 가장 큰 목적
+  * Use Case는 `User가 행할 수 있는 동작 단위`로 정의된다.
+  * 따라서, Use Case는 때때로 `Interactor`로 불리기도 한다.
+* (참고)비록 UseCase가 Clean Architecture를 달성하기 위하여 필요하지만, 필수적으로 개발 시 넣어야 하는 것은 아니다.
+  * 특정 태스크가 하나 이상의 ViewModel(UI Logic)에 사용되어야 할 때가 존재한다. 이 때, Use Case를 제작하면 Business Layer로부터 특정 기능 코드에 대한 재사용이 가능해진다.
+  * 이는 특정 기능 구현을 위한 ViewModel에서의 중복 코드 발생을 막아준다.(UseCase로부터 같은 코드를 가져다 쓰면 되기 때문)
+  * 따라서 ViewModel에서 다른 ViewModel과 중복되는 로직이 필요하면서 많은 양의 코드를 사용될 것이 예상된다면, UseCase를 활용함으로써 가독성과 테스트 가능성을 높일 수 있다.
+
+### Principles
+* 클린 아키텍처를 활용할 때 사용하는 세 가지 계층들
+  * Presentation(UI 혹은 Application이라고도 함)
+    * 유저와 상호작용하는 계층(유저에게 화면 표출 및 동작 인식 등)
+    * View(Activities, Fragments, Adapters, DI...)와 ViewModel이 여기에 해당
+    * 중요 : 클린 아키텍처에서는 ViewModel이 Repository 클래스와 직접 상호작용하지 않도록 하는 것이 중요
+      * ViewModel은 UseCase와 상호작용. UseCase가 Repository와 상호작용
+  * Domain
+    * 애플리케이션의 비즈니스 로직을 담당
+    * UseCase 및 Repository 인터페이스, Entity 클래스
+      * 각 태스크 동작을 구현한 UseCase
+  * Data
+    * 모든 데이터 소스에 대한 정의
+    * Repository 구현체 및 Data Source(Local/Remote)
+
+-- -- --
+## What to build
+* TMDB를 활용한 애플리케이션
+
+### Package Structure
+* data
+  * api(remote)
+  * db(local)
+  * model(data classes for dto)
+  * repository(impl)
+* domain
+  * repository
+  * use_case
+* presentation
+  * artist
+  * di
+  * ...
+
+### Use Cases for the project
+* 가장 먼저, 애플리케이션에서 유저가 할 수 있는 일들을 생각해보기
+  * 영화에 대한 데이터 열람
+  * 영화 정보 업데이트
+  * TV 쇼 데이터 열람
+  * TV 쇼 정보 업데이트
+  * 배우 열람
+  * 배우 정보 업데이트
+
+### Project Setup
+* TDMB API
+  * 회원가입 후 API 키 얻어오기
+  * 

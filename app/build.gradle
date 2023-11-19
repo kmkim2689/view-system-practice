@@ -29,6 +29,8 @@ android {
                 arg("room.schemaLocation", "$projectDir/schemas")
             }
         }
+
+        buildConfigField("String", "API_KEY", "\"81d2368af2a1f0cc5eb7abc24e521806\"")
     }
 
     buildTypes {
@@ -104,5 +106,8 @@ dependencies {
 
     implementation 'com.google.dagger:dagger:2.47'
     kapt 'com.google.dagger:dagger-compiler:2.47'
+
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    kapt "com.github.bumtech.glide:compiler:4.16.0"
 
 }
