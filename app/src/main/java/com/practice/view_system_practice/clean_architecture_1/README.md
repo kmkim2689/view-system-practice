@@ -71,4 +71,16 @@
 ### Project Setup
 * TDMB API
   * 회원가입 후 API 키 얻어오기
-  * 
+
+## Build Application
+### 1. Data Layer
+* API를 활용하여 인기 영화/tv쇼/배우에 대한 정보를 얻어옴
+  * Data Class로 변환하기 위한 JSON Object를 얻어오기 위함
+  * API > API Reference > Movies 메뉴
+  * https://developer.themoviedb.org/reference/movie-popular-list
+* API 호출을 통해 얻어온 결과를 JSON to Kotlin Data Class 기능을 활용하여 Data Class로 변환
+  * 이 때, Json 데이터를 붙여넣기 한다.
+  * 또한, Advanced 메뉴에서, 여러 설정을 할 수 있음
+    * 여기서는 GSON을 활용하여 Deserialization을 수행하므로, Annotation > Gson 선택해야 의도대로 변환됨
+    * 또한, 흔하게 일어나지는 않지만 혹시 모를 오류에 대한 crash를 방지하기 위하여,
+      * 무조건 있어야 하는 id 변수를 제외하고는 nullable로 해주는 것이 안전(null safe)
