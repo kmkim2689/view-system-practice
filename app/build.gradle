@@ -30,7 +30,7 @@ android {
             }
         }
 
-        buildConfigField("String", "API_KEY", "\"81d2368af2a1f0cc5eb7abc24e521806\"")
+        buildConfigField("String", "API_KEY", "\"eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI4MWQyMzY4YWYyYTFmMGNjNWViN2FiYzI0ZTUyMTgwNiIsInN1YiI6IjY1NWExOGVhMDgxNmM3MDBlMDFiOGFiOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.GW9SaUykdRWyU91jiSMGbDvaRu45MERw9MxLyxdJvRQ\"")
     }
 
     buildTypes {
