@@ -5,8 +5,8 @@
 
     <data>
         <variable
-            name="recommendation"
-            type="com.practice.view_system_practice.food.data.model.Meal" />
+            name="homeViewModel"
+            type="com.practice.view_system_practice.food.presentation.viewmodels.FoodHomeViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -90,7 +90,7 @@
                         android:layout_height="match_parent"
                         tools:background="@color/primary"
                         android:scaleType="centerCrop"
-                        app:imageUrl="@{recommendation.strMealThumb}"
+                        app:imageUrl="@{homeViewModel.randomMeal.strMealThumb}"
                         />
 
                 </androidx.cardview.widget.CardView>

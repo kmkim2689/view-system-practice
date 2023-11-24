@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <variable
+            name="viewModel"
+            type="com.practice.view_system_practice.food.presentation.viewmodels.MealDetailViewModel" />
+    </data>
+
+    <!--  coordinator layout 활용  -->
+    <!--  collapsing app bar 사용 목적  -->
+    <!--  스크롤하지 않았을 때는 사진이 보이고, 스크롤 했을 때는 사라지면서 툴바가 나타나도록 해야함  -->
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".food.presentation.activities.MealDetailActivity">
+
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/appbar_detail"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/_230sdp">
+
+            <!-- content scram : color of the toolbar when it get collapsed   -->
+            <!-- scrollFlags : 툴바가 접힐 때의 애니메이션 동작과 관련 -->
+            <com.google.android.material.appbar.CollapsingToolbarLayout
+                android:id="@+id/toolbar_collapsing_detail"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:contentScrim="@color/accent"
+                app:layout_scrollFlags="scroll|snap|exitUntilCollapsed"
+                app:title="@{viewModel.mealDetail.strMeal}"
+                app:collapsedTitleTextColor="@color/white"
+                app:expandedTitleTextColor="@color/white">
+
+                <!--  collapsemode : 툴바 내부의 요소가 툴바가 접힐 때 어떠한 식으로 collapse될 것인지 결정 -->
+                <ImageView
+                    android:id="@+id/iv_meal_detail"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    app:layout_collapseMode="parallax"
+                    app:imageUrl="@{viewModel.mealDetail.strMealThumb}"/>
+
+                <!-- toolbar는 collapse되어서는 안되므로, collapse mode를 pin으로 설정 -->
+                <androidx.appcompat.widget.Toolbar
+                    android:id="@+id/toolbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="?actionBarSize"
+                    app:layout_collapseMode="pin" />
+
+            </com.google.android.material.appbar.CollapsingToolbarLayout>
+
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btn_favorite"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/_10sdp"
+            android:contentDescription="like"
+            android:src="@drawable/ic_favorite"
+            app:backgroundTint="@color/accent"
+            app:layout_anchor="@id/appbar_detail"
+            app:layout_anchorGravity="bottom|end"
+            app:tint="@color/white" />
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <LinearLayout
+                    android:id="@+id/ll_info"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/_6sdp"
+                    android:layout_marginEnd="@dimen/_6sdp"
+                    android:orientation="horizontal"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <TextView
+                        android:id="@+id/tv_category"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@{viewModel.mealDetail.strCategory}"
+                        android:textColor="@color/g_black"
+                        android:textStyle="bold"
+                        app:drawableStartCompat="@drawable/ic_category"
+                        app:drawableTint="@color/g_black" />
+
+                    <TextView
+                        android:id="@+id/tv_area"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@{viewModel.mealDetail.strArea}"
+                        android:textColor="@color/g_black"
+                        android:textStyle="bold"
+                        app:drawableStartCompat="@drawable/ic_category"
+                        app:drawableTint="@color/g_black" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_instruction_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Instructions"
+                    app:layout_constraintTop_toBottomOf="@id/ll_info"
+                    app:layout_constraintStart_toStartOf="parent"
+                    android:layout_marginTop="@dimen/_10sdp"
+                    android:layout_marginStart="@dimen/_12sdp"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:fontFamily="@font/myfont"
+                    android:textSize="@dimen/_16ssp"/>
+
+                <TextView
+                    android:id="@+id/tv_instruction_content"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintTop_toBottomOf="@id/tv_instruction_title"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    android:layout_marginTop="@dimen/_10sdp"
+                    android:layout_marginStart="@dimen/_12sdp"
+                    android:layout_marginEnd="@dimen/_12sdp"
+                    android:text="@{viewModel.mealDetail.strInstructions}"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:fontFamily="@font/myfont"
+                    android:textSize="@dimen/_12ssp"/>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+<!--        스크롤과 상관 없이 항상 떠있어야 하는 그림을 표출하기 위해, scrollview 태그 바깥에 선언 -->
+        <ImageView
+            android:id="@+id/iv_youtube"
+            android:layout_width="@dimen/_40sdp"
+            android:layout_height="@dimen/_40sdp"
+            android:layout_gravity="bottom|center"
+            android:layout_marginBottom="@dimen/_16ssp"
+            android:src="@drawable/ic_youtube" />
+
+<!--        anchor와 anchorGravity에 대해 알아보기 -->
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:id="@+id/progress_bar"
+            app:layout_anchor="@id/appbar_detail"
+            app:layout_anchorGravity="bottom"
+            android:visibility="gone"/>
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+</layout>
