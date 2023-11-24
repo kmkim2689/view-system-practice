@@ -19,10 +19,7 @@
         android:theme="@style/Theme.Viewsystempractice"
         tools:targetApi="31">
         <activity
-            android:name=".clean_architecture_1.TmdbClientActivity"
-            android:exported="false" />
-        <activity
-            android:name=".dagger.DaggerPracticeActivity"
+            android:name=".food.presentation.activities.FoodMainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -31,8 +28,16 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".clean_architecture_1.TmdbClientActivity"
+            android:exported="false" />
+        <activity
+            android:name=".dagger.DaggerPracticeActivity"
+            android:exported="false">
+
+        </activity>
+        <activity
             android:name=".unit_tests.CalcActivity"
-            android:exported="false"></activity>
+            android:exported="false" />
         <activity
             android:name=".workmanager.WorkManagerActivity"
             android:exported="false" />
