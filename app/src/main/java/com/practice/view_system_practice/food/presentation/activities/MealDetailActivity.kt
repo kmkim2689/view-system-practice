@@ -29,7 +29,7 @@ class MealDetailActivity : AppCompatActivity() {
 
         viewModel.getMealDetail(mealId)
         observeDetailData()
-
+        loading()
     }
 
     private fun getMealDetailInfoFromIntent() {
@@ -41,11 +41,7 @@ class MealDetailActivity : AppCompatActivity() {
 
     private fun observeDetailData() {
         viewModel.mealDetail.observe(this) {
-            if (it == null) {
-                loading()
-            } else {
-                response()
-            }
+            response()
         }
     }
 

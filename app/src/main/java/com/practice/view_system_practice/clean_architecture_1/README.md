@@ -84,3 +84,30 @@
     * 여기서는 GSON을 활용하여 Deserialization을 수행하므로, Annotation > Gson 선택해야 의도대로 변환됨
     * 또한, 흔하게 일어나지는 않지만 혹시 모를 오류에 대한 crash를 방지하기 위하여,
       * 무조건 있어야 하는 id 변수를 제외하고는 nullable로 해주는 것이 안전(null safe)
+
+* Repository Implemenatations
+  * repository package
+    * RepositoryImpl that implements repository interface
+      * 함수들을 구현
+  * 고려 사항
+    * 사용자가 처음으로 데이터를 열람할 때에는, 앱은 api로부터 데이터를 받아와야 함
+    * 처음 데이터를 받아오는 시점에서는, 이것을 room 데이터베이스에 저장하는 과정이 필요
+    * ui 계층에서, 룸 디비로부터 데이터를 받아와 rv에 표시
+      * 임시 캐시를 활용하여 성능을 향상
+    * 유저가 새로고침을 한다면, 데이터베이스를 비우고 다시 api로부터 데이터를 다운받아 데이터베이스에 저장하고 rv에 적재
+    * **따라서 필요한 데이터 소스들은 다음과 같음**
+      * remote data source
+      * local data source
+      * cache data source
+
+  * 클린 아키텍처에서는, Public Interface를 활용하여 컴포넌트 간 통신을 진행한다. -> 세 가지 데이터소스에 대한 인터페이스를 만들기
+    * remote data source
+      * MovieRemoteDataSource => api의 응답 결과와 같은 형태를 반환하는 함수를 구현
+    * local data source
+      * MovieLocalDataSource => dao 함수와 같은 형태로 CRUD하는 함수를 구현
+    * remote data source
+      * MovieRemoteDataSource => 캐시로 데이터를 저장/획득하는 함수를 구현
+
+### 2. domain layer
+* Use Cases
+* Repository Interfaces

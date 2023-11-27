@@ -6,7 +6,5 @@ import com.practice.view_system_practice.clean_architecture_1.domain.repository.
 class GetArtistsUseCase(
     private val artistRepository: ArtistRepository
 ) {
-
     suspend fun execute(): List<Artist>? = artistRepository.getArtists()
-
 }
