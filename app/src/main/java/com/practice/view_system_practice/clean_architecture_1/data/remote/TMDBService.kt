@@ -9,17 +9,17 @@ import retrofit2.http.Header
 
 interface TMDBService {
 
-    @GET("/3/movie/popular")
+    @GET("movie/popular")
     suspend fun getPopularMovies(
         @Header("Authorization") authorization: String,
     ): Response<MovieList>
 
-    @GET("/3/tv/popular")
+    @GET("tv/popular")
     suspend fun getPopularTvShows(
         @Header("Authorization") authorization: String,
     ): Response<TvShowList>
 
-    @GET("/3/person/popular")
+    @GET("person/popular")
     suspend fun getPopularArtists(
         @Header("Authorization") authorization: String,
     ): Response<ArtistList>

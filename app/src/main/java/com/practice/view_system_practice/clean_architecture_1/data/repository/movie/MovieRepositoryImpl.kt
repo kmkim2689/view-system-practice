@@ -30,7 +30,7 @@ class MovieRepositoryImpl(
         try {
             val response = movieRemoteDataSource.getMovies()
             val body = response.body()
-            Log.i("MovieRepositoryImpl", response.message())
+            Log.i("MovieRepositoryImpl", body.toString())
             if (body != null) movieList = body.results
         } catch (e: Exception) {
             Log.i("MovieRepositoryImpl", e.message.toString())
