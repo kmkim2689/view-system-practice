@@ -36,8 +36,8 @@ class TvShowRepositoryImpl(
         try {
             tvShows = tvShowCacheDataSource.getTvShowsFromCache()
             if (tvShows.isEmpty()) {
-                val localTvShows = getTvShowsFromDb()
-                tvShowCacheDataSource.saveTvShowsToCache(localTvShows)
+                tvShows = getTvShowsFromDb()
+                tvShowCacheDataSource.saveTvShowsToCache(tvShows)
             }
         } catch (e: Exception) {
             Log.d("TvShowRepositoryImpl", e.message.toString())
@@ -51,8 +51,8 @@ class TvShowRepositoryImpl(
         try {
             tvShows = tvShowLocalDataSource.getTvShowsFromDb()
             if (tvShows.isEmpty()) {
-                val remoteTvShows = getTvShowsFromNetwork()
-                tvShowLocalDataSource.saveTvShowsToDb(remoteTvShows)
+                tvShows = getTvShowsFromNetwork()
+                tvShowLocalDataSource.saveTvShowsToDb(tvShows)
             }
         } catch (e: Exception) {
             Log.d("TvShowRepositoryImpl", e.message.toString())
@@ -62,7 +62,7 @@ class TvShowRepositoryImpl(
     }
 
     private suspend fun getTvShowsFromNetwork(): List<TvShow> {
-        lateinit var tvShows: List<TvShow>
+        var tvShows: List<TvShow> = emptyList()
         try {
             val response = tvShowRemoteDataSource.getPopularTvShows()
             if (response.body() != null) tvShows = response.body()!!.results

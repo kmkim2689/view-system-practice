@@ -26,11 +26,11 @@ class MovieRepositoryImpl(
     }
 
     suspend fun getMoviesFromApi(): List<Movie> {
-        lateinit var movieList: List<Movie>
-
+        var movieList: List<Movie> = emptyList()
         try {
             val response = movieRemoteDataSource.getMovies()
             val body = response.body()
+            Log.i("MovieRepositoryImpl", response.message())
             if (body != null) movieList = body.results
         } catch (e: Exception) {
             Log.i("MovieRepositoryImpl", e.message.toString())

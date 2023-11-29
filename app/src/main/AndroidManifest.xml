@@ -19,10 +19,26 @@
         android:theme="@style/Theme.Viewsystempractice"
         tools:targetApi="31">
         <activity
+            android:name=".clean_architecture_1.presentation.artist.ArtistActivity"
+            android:exported="false" />
+        <activity
+            android:name=".clean_architecture_1.presentation.tv_show.TvShowActivity"
+            android:exported="false" />
+        <activity
+            android:name=".clean_architecture_1.presentation.movie.MovieActivity"
+            android:exported="false">
+
+        </activity>
+        <activity
             android:name=".food.presentation.activities.MealDetailActivity"
             android:exported="false" />
         <activity
             android:name=".food.presentation.activities.FoodMainActivity"
+            android:exported="false">
+
+        </activity>
+        <activity
+            android:name=".clean_architecture_1.presentation.TmdbClientActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -31,11 +47,8 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".clean_architecture_1.TmdbClientActivity"
-            android:exported="false" />
-        <activity
             android:name=".dagger.DaggerPracticeActivity"
-            android:exported="false"></activity>
+            android:exported="false" />
         <activity
             android:name=".unit_tests.CalcActivity"
             android:exported="false" />

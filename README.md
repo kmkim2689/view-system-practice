@@ -3608,7 +3608,7 @@ interface SmartPhoneComponent {
   @Module
   abstract class NickelBatteryModule {
     @Binds
-    abstract fun provideNickelBattery(nickelBattery: NickelBattery): Battery
+    abstract fun bindNickelBattery(nickelBattery: NickelBattery): Battery
   }
   ```
 

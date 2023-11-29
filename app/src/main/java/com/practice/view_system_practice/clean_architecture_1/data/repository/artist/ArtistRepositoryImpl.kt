@@ -58,7 +58,7 @@ class ArtistRepositoryImpl(
     }
 
     private suspend fun getArtistListFromNetwork(): List<Artist> {
-        lateinit var artists: List<Artist>
+        var artists: List<Artist> = emptyList()
 
         try {
             val response = artistRemoteDataSource.getArtists()

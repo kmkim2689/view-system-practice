@@ -111,3 +111,58 @@
 ### 2. domain layer
 * Use Cases
 * Repository Interfaces
+
+### 3. Presentation Layer
+* activity
+  * tmdbclientactivity(main)
+* viewmodel + viewmodel factory
+  * 한 화면에 사용되는 유즈케이스 별로 뷰모델을 생성
+    * 해당 유즈케이스 함수들을 viewmodel에서 invoke
+  * viewmodel 클래스에서는 필요한 유즈 케이스들을 주입받아 사용
+  * viewmodel 클래스에서 생성자가 필요하기 때문에, viewmodel 별로 viewmodel factory를 생성
+
+* di using dagger2
+  * 여기서 사용되는 의존성들 => 모듈로 만들어 놓기
+    * ViewModel에서 사용되는 UseCase => 7
+    * UseCase에서 사용되는 Repository => 6
+    * Repository에서 사용되는 DataSource => 3, 4, 5
+    * DataSource에서 사용되는 api service(Retrofit instance), dao => 1, 2
+
+  1. NetworkModule(@Module) => for ~~RemoteDataSourceImpl
+  * retrofit instance => baseUrl을 필요로 하므로, Module 클래스의 생성자로 baseUrl을 추가해야함.
+  * TMDBService instance based on retrofit instance
+  2. DatabaseModule(@Module) => for ~~LocalDataSourceImpl
+  * TMDBDatabase instance
+  * MovieDao instance(based on TMDBDatabase)
+  * TvShowDao instance(based on TMDBDatabase)
+  * ArtistDao instance(based on TMDBDatabase)
+  3. RemoteDataModule(@Module) => For ~~RepositoryImpl
+  * ~~RepositoryImpl 클래스의 생성자로 apiKey가 필요하기 때문에, Module의 생성자로 apiKey 추가
+  * MovieRemoteDataSource instance
+  * TvShowRemoteDataSource instance
+  * ArtistRemoteDataSource Instance
+  4. LocalDataModule(@Module) => For ~~RepositoryImpl
+  * ~~RepositoryImpl 클래스의 생성자로 dao가 필요. 다만 이미 DatabaseModule에서 provide 함수를 정의했으므로 생성자는 필요 없음
+  * MovieLocalDataSource instance
+  * TvShowLocalDataSource instance
+  * ArtistLocalDataSource Instance
+  5. CacheDataModule(@Module) => For ~~RepositoryImpl
+  6. RepositoryModule(@Module) => For Usecases(repository를 만드는 데 필요한 변수는 이미 앞에서 provide 함수로 정의했으므로, 생성자 필요x)
+  * MovieRepository instance
+  * TvShowRepository instance
+  * ArtistRepository instance
+  7. UseCaseModule(@Module) => For ViewModels
+  8. AppModule(@Module) => applicationContext 활용을 위함 => context 주입을 위한 함수(singleton)
+  9. AppComponent -> ComponentInterface => ViewModel에서 UseCase를 활용하기 위함
+  * Singleton으로 선언 + 필요한 모듈들을 @Component에 모두 추가
+  10. ViewModel을 공급받기 위한 모듈
+  * 앱에서는 총 3개의 뷰모델을 활용(artist, movie, tvshow)
+  * 만약 viewmodel이 특정 액티비티 생명주기에만 살아남기를 원한다면, subcomponent를 만들어야 한다.
+  * movie, artist, tvshow의 데이터 플로우에 대한 서브컴포넌트를 만들고자 함
+  * 이 과정에서, Scope Annotation class를 생성한다.
+  
+
+* view component layout
+  * button layout resource file
+    * 버튼에 대해서 일일이 하나하나 스타일을 적용하기 보다, 미리 하나의 테마를 만들어놓기 위함
+    * btn_rounded.xml(drawable)

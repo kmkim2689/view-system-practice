@@ -31,6 +31,7 @@ android {
         }
 
         buildConfigField("String", "API_KEY", "\"eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI4MWQyMzY4YWYyYTFmMGNjNWViN2FiYzI0ZTUyMTgwNiIsInN1YiI6IjY1NWExOGVhMDgxNmM3MDBlMDFiOGFiOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.GW9SaUykdRWyU91jiSMGbDvaRu45MERw9MxLyxdJvRQ\"")
+        buildConfigField("String", "BASE_URL", "\"https://api.themoviedb.org/3/\"")
     }
 
     buildTypes {

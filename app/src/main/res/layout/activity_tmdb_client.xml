@@ -1,9 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".clean_architecture_1.TmdbClientActivity">
+    xmlns:tools="http://schemas.android.com/tools">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <data>
+
+    </data>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        tools:context=".clean_architecture_1.presentation.TmdbClientActivity">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_movie"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_gravity="center"
+            android:layout_weight="1"
+            android:layout_marginBottom="@dimen/_40sdp"
+            android:layout_marginTop="@dimen/_40sdp"
+            android:textColor="@color/white"
+            android:background="@drawable/btn_rounded"
+            android:padding="@dimen/_16sdp"
+            android:text="movies"
+            android:textSize="@dimen/_48ssp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_gravity="center"
+            android:layout_weight="1"
+            android:layout_marginBottom="@dimen/_40sdp"
+            android:layout_marginTop="@dimen/_40sdp"
+            android:textColor="@color/white"
+            android:background="@drawable/btn_rounded"
+            android:padding="@dimen/_16sdp"
+            android:text="Tv Shows"
+            android:textSize="@dimen/_48ssp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btn_actor"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_gravity="center"
+            android:layout_weight="1"
+            android:layout_marginBottom="@dimen/_40sdp"
+            android:layout_marginTop="@dimen/_40sdp"
+            android:textColor="@color/white"
+            android:background="@drawable/btn_rounded"
+            android:padding="@dimen/_16sdp"
+            android:text="Actors"
+            android:textSize="@dimen/_48ssp" />
+
+
+    </LinearLayout>
+</layout>
