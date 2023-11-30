@@ -9,7 +9,9 @@ import com.practice.view_system_practice.R
 import com.practice.view_system_practice.databinding.ItemFoodCategoryBinding
 import com.practice.view_system_practice.food.data.model.Category
 
-class MealCategoryRVAdapter : RecyclerView.Adapter<MealCategoryRVAdapter.MealCategoryViewHolder>() {
+class MealCategoryRVAdapter(
+    private val onCategoryClick: (Category) -> Unit
+) : RecyclerView.Adapter<MealCategoryRVAdapter.MealCategoryViewHolder>() {
 
     private var categories = ArrayList<Category>()
 
@@ -27,7 +29,11 @@ class MealCategoryRVAdapter : RecyclerView.Adapter<MealCategoryRVAdapter.MealCat
             false
         )
 
-        return MealCategoryViewHolder(binding)
+        return MealCategoryViewHolder(binding).apply {
+            binding.root.setOnClickListener {
+                onCategoryClick(categories[adapterPosition])
+            }
+        }
     }
 
     override fun onBindViewHolder(holder: MealCategoryViewHolder, position: Int) {

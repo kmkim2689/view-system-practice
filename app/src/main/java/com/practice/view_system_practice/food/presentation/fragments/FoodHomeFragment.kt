@@ -14,6 +14,7 @@ import com.practice.view_system_practice.R
 import com.practice.view_system_practice.databinding.FragmentFoodHomeBinding
 import com.practice.view_system_practice.food.data.model.Category
 import com.practice.view_system_practice.food.data.model.MealsByCategory
+import com.practice.view_system_practice.food.presentation.activities.CategoryMealsActivity
 import com.practice.view_system_practice.food.presentation.activities.MealDetailActivity
 import com.practice.view_system_practice.food.presentation.adapter.MealCategoryRVAdapter
 import com.practice.view_system_practice.food.presentation.adapter.PopularMealRVAdapter
@@ -72,7 +73,7 @@ class FoodHomeFragment : Fragment() {
     }
 
     private fun initCategoryRecyclerView() {
-        categoryAdapter = MealCategoryRVAdapter()
+        categoryAdapter = MealCategoryRVAdapter(onCategoryItemClick)
         val layoutManager = GridLayoutManager(requireContext(), 3)
         viewModel.categories.observe(viewLifecycleOwner) {
             categoryAdapter.setCategories(it as ArrayList<Category>)
@@ -93,11 +94,19 @@ class FoodHomeFragment : Fragment() {
         }
     }
 
+    private val onCategoryItemClick = { categoryItem: Category ->
+        Intent(activity, CategoryMealsActivity::class.java).let {
+            it.putExtra(CATEGORY_NAME, categoryItem.strCategory)
+            startActivity(it)
+        }
+    }
+
     companion object {
         const val TAG = "FoodHomeFragment"
         const val MEAL_ID = "meal_id"
         const val MEAL_NAME = "meal_name"
         const val MEAL_THUMBNAIL = "meal_thumbnail"
+        const val CATEGORY_NAME = "category_name"
     }
 
 }
