@@ -4,10 +4,15 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.practice.view_system_practice.food.core.Constants.SEAFOOD
+import com.practice.view_system_practice.food.data.model.Category
+import com.practice.view_system_practice.food.data.model.MealsByCategory
 import com.practice.view_system_practice.food.data.model.Meal
 import com.practice.view_system_practice.food.data.model.MealList
 import com.practice.view_system_practice.food.data.remote.MealRetrofitInstance
 import com.practice.view_system_practice.food.presentation.fragments.FoodHomeFragment
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -18,8 +23,18 @@ class FoodHomeViewModel : ViewModel() {
     val randomMeal: LiveData<Meal>
         get() = _randomMeal
 
+    private var _popularMeals = MutableLiveData<List<MealsByCategory>>()
+    val popularMeals: LiveData<List<MealsByCategory>>
+        get() = _popularMeals
+
+    private var _categories = MutableLiveData<List<Category>>()
+    val categories: LiveData<List<Category>>
+        get() = _categories
+
     init {
         getRandomMeal()
+        getPopularItems()
+        getCategories()
     }
 
     // private를 붙이지 않으면 ambiguous method 에러 발생 이유?
@@ -39,7 +54,6 @@ class FoodHomeViewModel : ViewModel() {
                     response.body()?.let {
                         val randomMealData = response.body()!!.meals[0]
                         _randomMeal.value = randomMealData
-                        Log.d(FoodHomeFragment.TAG, "${randomMealData.idMeal} : ${randomMealData.strMeal}")
                     } ?: return
                 }
 
@@ -53,5 +67,40 @@ class FoodHomeViewModel : ViewModel() {
         }
     }
 
+    private fun getPopularItems() {
+        viewModelScope.launch {
+            try {
+                val popularItemsResponse = MealRetrofitInstance.api.getPopularMeals(SEAFOOD)
+                if (popularItemsResponse.isSuccessful) {
+                    popularItemsResponse.body()?.let {
+                        _popularMeals.value = it.meals
+                    }
+                    Log.d(FoodHomeFragment.TAG, popularMeals.value.toString())
+                } else {
+                    Log.d(FoodHomeFragment.TAG, popularItemsResponse.message())
+                }
+            } catch (e: Exception) {
+                Log.e(FoodHomeFragment.TAG, e.localizedMessage ?: "unexpected error")
+            }
+        }
+    }
 
+    private fun getCategories() {
+        viewModelScope.launch {
+            try {
+                val categoriesResponse = MealRetrofitInstance.api.getCategoryList()
+                if (categoriesResponse.isSuccessful) {
+                    categoriesResponse.body()?.let {
+                        _categories.value = it.categories
+                    }
+                    Log.d(FoodHomeFragment.TAG, "${categories.value}")
+
+                } else {
+                    Log.d(FoodHomeFragment.TAG, categoriesResponse.message())
+                }
+            } catch (e: Exception) {
+                Log.e(FoodHomeFragment.TAG, e.localizedMessage ?: "unexpected error")
+            }
+        }
+    }
 }

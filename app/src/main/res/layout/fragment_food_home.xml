@@ -115,6 +115,7 @@
                     android:layout_height="@dimen/_90sdp"
                     android:layout_marginStart="@dimen/_24sdp"
                     android:layout_marginEnd="@dimen/_10sdp"
+                    android:orientation="horizontal"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/tv_popular_items" />

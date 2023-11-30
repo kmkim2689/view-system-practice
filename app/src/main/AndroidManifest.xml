@@ -34,17 +34,17 @@
             android:exported="false" />
         <activity
             android:name=".food.presentation.activities.FoodMainActivity"
-            android:exported="false">
-
-        </activity>
-        <activity
-            android:name=".clean_architecture_1.presentation.TmdbClientActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name=".clean_architecture_1.presentation.TmdbClientActivity"
+            android:exported="false">
+
         </activity>
         <activity
             android:name=".dagger.DaggerPracticeActivity"
