@@ -18,20 +18,19 @@ class CategoryMealsViewModel : ViewModel() {
         get() = _meals
 
     fun getMealsByCategory(categoryName: String) {
-        try {
-            viewModelScope.launch {
+        Log.i("CategoryMealsViewModel", categoryName)
+        viewModelScope.launch {
+            try {
                 val response = MealRetrofitInstance.api.getMealsByCategory(categoryName)
-                if (response.isSuccessful) {
-                    response.body()?.let {
-                        _meals.value = it.meals
-                    }
-                    Log.e("CategoryMealsViewModel", response.body()?.meals.toString())
-                } else {
-                    Log.e("CategoryMealsViewModel", response.message())
+
+                response.body()?.let {
+                    _meals.value = it.meals
                 }
+
+
+            } catch (e: Exception) {
+                Log.e("CategoryMealsViewModel", e.message.toString())
             }
-        } catch (e: Exception) {
-            Log.e("CategoryMealsViewModel", e.message.toString())
         }
     }
 }

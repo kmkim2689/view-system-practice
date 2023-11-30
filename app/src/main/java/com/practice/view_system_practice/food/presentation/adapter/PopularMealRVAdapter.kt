@@ -17,6 +17,7 @@ class PopularMealRVAdapter(
     private var mealsList = ArrayList<MealsByCategory>()
 
     fun setMeals(meals: ArrayList<MealsByCategory>) {
+        mealsList.clear()
         mealsList.addAll(meals)
         notifyDataSetChanged()
     }

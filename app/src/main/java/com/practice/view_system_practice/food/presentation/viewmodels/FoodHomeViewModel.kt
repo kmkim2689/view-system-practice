@@ -75,7 +75,9 @@ class FoodHomeViewModel : ViewModel() {
                     popularItemsResponse.body()?.let {
                         _popularMeals.value = it.meals
                     }
-                    Log.d(FoodHomeFragment.TAG, popularMeals.value.toString())
+                    Log.d(FoodHomeFragment.TAG, popularItemsResponse.body().toString())
+
+                    // Log.d(FoodHomeFragment.TAG, popularMeals.value.toString())
                 } else {
                     Log.d(FoodHomeFragment.TAG, popularItemsResponse.message())
                 }
